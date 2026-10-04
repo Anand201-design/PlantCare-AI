@@ -1,0 +1,10 @@
+{
+  "name": "PlantCare AI",
+  "description": "AI-powered plant analysis for identifying species, detecting diseases, and providing expert nutritional care recommendations for healthier plants.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

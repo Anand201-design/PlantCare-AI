@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-display: 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+
+    /* Light Theme Semantic Tokens (Default Primary Experience) */
+    --color-bg-primary: #F6F9F5;
+    --color-bg-secondary: #F0F6F1;
+    --color-surface: #FFFFFF;
+    --color-surface-secondary: #F0F6F1;
+    --color-surface-card: #FFFFFF;
+    --color-border: #DCE7DF;
+    --color-border-subtle: #E4F0E7;
+    --color-text-primary: #163A2D;
+    --color-text-secondary: #668074;
+    --color-text-muted: #8EAD9B;
+    --color-accent: #176B4D;
+    --color-accent-hover: #12563D;
+    --color-input-bg: #FFFFFF;
+  }
+
+  .dark {
+    /* Dark Theme Semantic Tokens (Only when explicitly toggled) */
+    --color-bg-primary: #0F231B;
+    --color-bg-secondary: #152E24;
+    --color-surface: #173126;
+    --color-surface-secondary: #1D3B2D;
+    --color-surface-card: #173126;
+    --color-border: #244737;
+    --color-border-subtle: #1D3B2D;
+    --color-text-primary: #F1F7F3;
+    --color-text-secondary: #B0C9BA;
+    --color-text-muted: #82A390;
+    --color-accent: #2D8A62;
+    --color-accent-hover: #23704E;
+    --color-input-bg: #12281E;
+  }
+
+  html {
+    color-scheme: light;
+    background-color: #F6F9F5;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    background-color: #0F231B;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+  }
+
+  .font-mono, .tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Accessibility & Density Modifier Classes */
+.density-compact .py-3 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.density-compact .p-6 {
+  padding: 1rem;
+}
+.density-compact .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+}
+
+.reduce-motion * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+.high-contrast {
+  --color-border: #163A2D;
+  --color-text-primary: #0B2119;
+}
+.dark.high-contrast {
+  --color-border: #8EAD9B;
+  --color-text-primary: #FFFFFF;
+}
