@@ -1,0 +1,349 @@
+{
+  "plants": [
+    {
+      "id": "671f9b20c4d8a912e4560101",
+      "plantName": "Tomato",
+      "scientificName": "Solanum lycopersicum",
+      "category": "Vegetable · Solanaceae",
+      "location": "Greenhouse Bed A4",
+      "imageUrl": "/src/assets/images/specimen_tomato_blight_1791123302093.jpg",
+      "soilType": "Loamy well-draining mix (pH 6.2–6.8)",
+      "sunlightRequirement": "Full sun (6–8 hours daily)",
+      "waterRequirement": "Deep root watering every 2–3 days",
+      "temperatureRange": "20°C – 27°C",
+      "latestHealthScore": 82,
+      "latestStatus": "Moderate Stress",
+      "latestDisease": "Early Blight",
+      "notes": "Monitor lower leaves for concentric ring spots."
+    },
+    {
+      "id": "671f9b20c4d8a912e4560102",
+      "plantName": "Garden Rose",
+      "scientificName": "Rosa × hybrida",
+      "category": "Flowering Shrub · Rosaceae",
+      "location": "South Courtyard",
+      "imageUrl": "/src/assets/images/specimen_rose_healthy_1791123284883.jpg",
+      "soilType": "Rich organic loam (pH 6.5)",
+      "sunlightRequirement": "Full morning sun (6+ hours)",
+      "waterRequirement": "Water deeply twice weekly at base",
+      "temperatureRange": "16°C – 25°C",
+      "latestHealthScore": 96,
+      "latestStatus": "Healthy",
+      "latestDisease": "Healthy",
+      "notes": "Vibrant foliage and active bud development."
+    },
+    {
+      "id": "671f9b20c4d8a912e4560103",
+      "plantName": "Chilli Pepper",
+      "scientificName": "Capsicum annuum",
+      "location": "Sunny Balcony Planter",
+      "category": "Spice Crop · Solanaceae",
+      "imageUrl": "/src/assets/images/specimen_chilli_chlorosis_1791123315102.jpg",
+      "soilType": "Sandy loam with compost (pH 6.0–6.8)",
+      "sunlightRequirement": "Full bright sunlight",
+      "waterRequirement": "Moderate — allow top inch to dry",
+      "temperatureRange": "21°C – 29°C",
+      "latestHealthScore": 76,
+      "latestStatus": "Mild Stress",
+      "latestDisease": "Mild Interveinal Chlorosis",
+      "notes": "Scheduled for organic magnesium and nitrogen feed."
+    },
+    {
+      "id": "671f9b20c4d8a912e4560104",
+      "plantName": "Monstera Deliciosa",
+      "scientificName": "Monstera deliciosa",
+      "category": "Indoor Tropical · Araceae",
+      "location": "Living Room East Window",
+      "imageUrl": "/src/assets/images/hero_monstera_plant_1791123269478.jpg",
+      "soilType": "Chunky aroid mix with bark & perlite",
+      "sunlightRequirement": "Bright indirect morning light",
+      "waterRequirement": "Every 7–9 days when top 2 inches dry",
+      "temperatureRange": "18°C – 27°C",
+      "latestHealthScore": 94,
+      "latestStatus": "Healthy",
+      "latestDisease": "Healthy",
+      "notes": "New fenestrated leaf unfurling cleanly."
+    },
+    {
+      "id": "671f9b20c4d8a912e4560105",
+      "plantName": "Fiddle Leaf Fig",
+      "scientificName": "Ficus lyrata",
+      "category": "Indoor Tree · Moraceae",
+      "location": "Sunroom Corner",
+      "imageUrl": "/src/assets/images/plant_fiddle_leaf_fig_1791124639713.jpg",
+      "soilType": "Well-aerated peat & bark mix (pH 6.0–6.5)",
+      "sunlightRequirement": "Bright filtered daylight",
+      "waterRequirement": "Every 7–10 days when top 2 inches dry",
+      "temperatureRange": "18°C – 26°C",
+      "latestHealthScore": 93,
+      "latestStatus": "Healthy",
+      "latestDisease": "Healthy",
+      "notes": "Broad violin-shaped leaves wiped clean for optimal photosynthesis."
+    },
+    {
+      "id": "671f9b20c4d8a912e4560106",
+      "plantName": "Peace Lily",
+      "scientificName": "Spathiphyllum wallisii",
+      "category": "Flowering Tropical · Araceae",
+      "location": "Study Desk North Window",
+      "imageUrl": "/src/assets/images/plant_peace_lily_1791124652513.jpg",
+      "soilType": "Rich moisture-retentive organic potting mix",
+      "sunlightRequirement": "Medium to bright indirect light",
+      "waterRequirement": "Keep evenly moist; mist weekly",
+      "temperatureRange": "18°C – 26°C",
+      "latestHealthScore": 95,
+      "latestStatus": "Healthy",
+      "latestDisease": "Healthy",
+      "notes": "Blooming white spathes with glossy dark green leaves."
+    }
+  ],
+  "history": [
+    {
+      "id": "scan_1791300234529",
+      "plant_name": "Garden Rose",
+      "scientific_name": "Rosa × hybrida",
+      "family": "Rosaceae",
+      "disease_name": "Healthy",
+      "confidence_score": 0.98,
+      "severity": "none",
+      "overall_status": "Healthy",
+      "health_score": 96,
+      "symptoms": [
+        "Deep glossy green cuticle",
+        "Uniform leaf margins with zero necrotic spotting"
+      ],
+      "possible_nutrient_deficiency": "None detected",
+      "nutrient_deficiency_details": "Optimal chlorophyll density and balanced macro/micronutrient uptake.",
+      "treatment_recommendations": [
+        "Continue current deep watering schedule twice weekly.",
+        "Deadhead spent blooms to encourage new flowering stems."
+      ],
+      "prevention_recommendations": [
+        "Maintain morning sun exposure to dry overnight dew quickly.",
+        "Top-dress with organic compost in early spring and mid-summer."
+      ],
+      "image_path": "/uploads/leaf_1791300232126.jpg",
+      "created_at": "2026-10-06T15:23:54.529Z"
+    },
+    {
+      "id": "scan_1791299454931",
+      "plant_name": "Tomato",
+      "scientific_name": "Solanum lycopersicum",
+      "family": "Solanaceae",
+      "disease_name": "Early Blight (Alternaria solani)",
+      "confidence_score": 0.94,
+      "severity": "moderate",
+      "overall_status": "Moderate Stress",
+      "health_score": 78,
+      "symptoms": [
+        "Concentric dark brown rings on older lower leaves",
+        "Slight yellow halo surrounding leaf lesions"
+      ],
+      "possible_nutrient_deficiency": "Mild Nitrogen & Potassium depletion",
+      "nutrient_deficiency_details": "Lower leaf senescence accelerated by fungal stress and fruiting nutrient demand.",
+      "treatment_recommendations": [
+        "Prune and dispose of affected lower leaves using sanitized shears.",
+        "Apply organic copper fungicide or bio-fungicide spray every 7–10 days.",
+        "Water at the base of the plant early in the morning to keep foliage dry."
+      ],
+      "prevention_recommendations": [
+        "Mulch around the base of stems to prevent soil-borne spore splash.",
+        "Ensure 60–75 cm spacing between plants for airflow.",
+        "Rotate solanaceous crops each growing season."
+      ],
+      "image_path": "/uploads/leaf_1791299454584.jpg",
+      "created_at": "2026-10-06T15:10:54.931Z"
+    },
+    {
+      "id": "671f9b20c4d8a912e4560201",
+      "plant_name": "Tomato",
+      "scientific_name": "Solanum lycopersicum",
+      "family": "Solanaceae",
+      "disease_name": "Early Blight (Alternaria solani)",
+      "confidence_score": 0.94,
+      "severity": "moderate",
+      "overall_status": "Moderate Stress",
+      "health_score": 78,
+      "symptoms": [
+        "Concentric dark brown rings on older lower leaves",
+        "Slight yellow halo surrounding leaf lesions"
+      ],
+      "possible_nutrient_deficiency": "Mild Nitrogen & Potassium depletion",
+      "nutrient_deficiency_details": "Lower leaf senescence accelerated by fungal stress and fruiting nutrient demand.",
+      "treatment_recommendations": [
+        "Prune and dispose of affected lower leaves using sanitized shears.",
+        "Apply organic copper fungicide or bio-fungicide spray every 7–10 days.",
+        "Water at the base of the plant early in the morning to keep foliage dry."
+      ],
+      "prevention_recommendations": [
+        "Mulch around the base of stems to prevent soil-borne spore splash.",
+        "Ensure 60–75 cm spacing between plants for airflow.",
+        "Rotate solanaceous crops each growing season."
+      ],
+      "image_path": "/src/assets/images/specimen_tomato_blight_1791123302093.jpg",
+      "created_at": "2026-10-06T13:07:38.917Z"
+    },
+    {
+      "id": "671f9b20c4d8a912e4560202",
+      "plant_name": "Garden Rose",
+      "scientific_name": "Rosa × hybrida",
+      "family": "Rosaceae",
+      "disease_name": "Healthy",
+      "confidence_score": 0.98,
+      "severity": "none",
+      "overall_status": "Healthy",
+      "health_score": 96,
+      "symptoms": [
+        "Deep glossy green cuticle",
+        "Uniform leaf margins with zero necrotic spotting"
+      ],
+      "possible_nutrient_deficiency": "None detected",
+      "nutrient_deficiency_details": "Optimal chlorophyll density and balanced macro/micronutrient uptake.",
+      "treatment_recommendations": [
+        "Continue current deep watering schedule twice weekly.",
+        "Deadhead spent blooms to encourage new flowering stems."
+      ],
+      "prevention_recommendations": [
+        "Maintain morning sun exposure to dry overnight dew quickly.",
+        "Top-dress with organic compost in early spring and mid-summer."
+      ],
+      "image_path": "/src/assets/images/specimen_rose_healthy_1791123284883.jpg",
+      "created_at": "2026-10-06T09:07:38.917Z"
+    },
+    {
+      "id": "671f9b20c4d8a912e4560203",
+      "plant_name": "Chilli Pepper",
+      "scientific_name": "Capsicum annuum",
+      "family": "Solanaceae",
+      "disease_name": "Interveinal Chlorosis",
+      "confidence_score": 0.91,
+      "severity": "mild",
+      "overall_status": "Mild Stress",
+      "health_score": 76,
+      "symptoms": [
+        "Pale yellowing between leaf veins",
+        "Slight upward curling on mid-canopy foliage"
+      ],
+      "possible_nutrient_deficiency": "Magnesium & Nitrogen Deficiency",
+      "nutrient_deficiency_details": "Interveinal yellowing indicates reduced chlorophyll synthesis due to low magnesium availability.",
+      "treatment_recommendations": [
+        "Apply a foliar spray of diluted Epsom salt (1 tsp per liter of water).",
+        "Feed with a balanced organic liquid fertilizer rich in trace minerals."
+      ],
+      "prevention_recommendations": [
+        "Maintain soil pH between 6.0 and 6.8 for optimal nutrient uptake.",
+        "Avoid overwatering which leaches soluble magnesium from container soil."
+      ],
+      "image_path": "/src/assets/images/specimen_chilli_chlorosis_1791123315102.jpg",
+      "created_at": "2026-10-05T15:07:38.917Z"
+    },
+    {
+      "id": "671f9b20c4d8a912e4560204",
+      "plant_name": "Monstera Deliciosa",
+      "scientific_name": "Monstera deliciosa",
+      "family": "Araceae",
+      "disease_name": "Minor Leaf Tip Low-Humidity Stress",
+      "confidence_score": 0.95,
+      "severity": "mild",
+      "overall_status": "Healthy",
+      "health_score": 91,
+      "symptoms": [
+        "Rich fenestrated leaf lamina",
+        "Slight dry margin on oldest lower leaf tip"
+      ],
+      "possible_nutrient_deficiency": "None detected",
+      "nutrient_deficiency_details": "Overall foliar nutrition is optimal; minor tip browning is caused by low indoor relative humidity.",
+      "treatment_recommendations": [
+        "Increase ambient humidity around the plant to 55%–65%.",
+        "Water thoroughly when the top 2 inches of potting mix feel dry."
+      ],
+      "prevention_recommendations": [
+        "Keep away from direct AC or heating vents.",
+        "Wipe leaves monthly to maximize photosynthetic efficiency."
+      ],
+      "image_path": "/src/assets/images/specimen_monstera_spot_1791123333163.jpg",
+      "created_at": "2026-10-04T15:07:38.917Z"
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "rec-101",
+      "plantId": "671f9b20c4d8a912e4560101",
+      "plantName": "Tomato",
+      "plantImage": "/src/assets/images/specimen_tomato_blight_1791123302093.jpg",
+      "recommendation": "Prune lower blight-affected leaves & apply copper bio-fungicide",
+      "category": "Disease prevention",
+      "priority": "high",
+      "explanation": "Removing lower leaves with concentric lesions stops Alternaria spores from splashing onto healthy upper foliage.",
+      "recommendedAction": "Remove the bottom 3–4 infected leaflets with clean shears and mist canopy with organic copper soap.",
+      "date": "2026-10-06T15:07:38.917Z",
+      "status": "active"
+    },
+    {
+      "id": "rec-102",
+      "plantId": "671f9b20c4d8a912e4560104",
+      "plantName": "Monstera Deliciosa",
+      "plantImage": "/src/assets/images/hero_monstera_plant_1791123269478.jpg",
+      "recommendation": "Rotate container 90° and mist aerial roots",
+      "category": "Lighting",
+      "priority": "medium",
+      "explanation": "Even light exposure ensures balanced petiole posture and larger fenestrations on new leaves.",
+      "recommendedAction": "Turn pot a quarter turn clockwise and wipe dust from broad leaf surfaces with a damp cloth.",
+      "date": "2026-10-06T15:07:38.917Z",
+      "status": "active"
+    },
+    {
+      "id": "rec-103",
+      "plantId": "671f9b20c4d8a912e4560103",
+      "plantName": "Chilli Pepper",
+      "plantImage": "/src/assets/images/specimen_chilli_chlorosis_1791123315102.jpg",
+      "recommendation": "Supplement with magnesium & balanced organic nitrogen",
+      "category": "Nutrition",
+      "priority": "high",
+      "explanation": "Corrects interveinal chlorosis and supports healthy flower and fruit set.",
+      "recommendedAction": "Water with 500ml of chelated micronutrient solution during morning irrigation.",
+      "date": "2026-10-06T15:07:38.917Z",
+      "status": "active"
+    },
+    {
+      "id": "rec-104",
+      "plantId": "671f9b20c4d8a912e4560102",
+      "plantName": "Garden Rose",
+      "plantImage": "/src/assets/images/specimen_rose_healthy_1791123284883.jpg",
+      "recommendation": "Deep base watering & organic mulch refresh",
+      "category": "Watering",
+      "priority": "low",
+      "explanation": "Keeps root zone cool and moist without wetting foliage.",
+      "recommendedAction": "Deliver 3 liters of water at the root collar and maintain a 5cm bark mulch layer.",
+      "date": "2026-10-06T15:07:38.917Z",
+      "status": "completed"
+    },
+    {
+      "id": "rec-105",
+      "plantId": "671f9b20c4d8a912e4560105",
+      "plantName": "Fiddle Leaf Fig",
+      "plantImage": "/src/assets/images/plant_fiddle_leaf_fig_1791124639713.jpg",
+      "recommendation": "Wipe broad leaf lamina & check top 2 inches of soil",
+      "category": "Maintenance",
+      "priority": "medium",
+      "explanation": "Dust-free violin-shaped leaves absorb up to 30% more indirect indoor sunlight.",
+      "recommendedAction": "Gently wipe upper and lower leaf surfaces with a soft damp microfiber cloth.",
+      "date": "2026-10-06T15:07:38.917Z",
+      "status": "active"
+    },
+    {
+      "id": "rec-106",
+      "plantId": "671f9b20c4d8a912e4560106",
+      "plantName": "Peace Lily",
+      "plantImage": "/src/assets/images/plant_peace_lily_1791124652513.jpg",
+      "recommendation": "Maintain gentle humidity around emerging white spathes",
+      "category": "Humidity",
+      "priority": "low",
+      "explanation": "Consistent 55–65% relative humidity prevents brown leaf tips and prolongs bloom life.",
+      "recommendedAction": "Mist surrounding air with filtered water and keep soil lightly moist.",
+      "date": "2026-10-06T15:07:38.917Z",
+      "status": "active"
+    }
+  ],
+  "sensors": []
+}

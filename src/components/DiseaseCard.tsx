@@ -16,13 +16,16 @@ export const DiseaseCard: React.FC<DiseaseCardProps> = ({
   severity,
   symptoms,
 }) => {
-  const { t } = useLanguage();
-  const isHealthy = diseaseName.toLowerCase() === "healthy";
+  const { t, tr } = useLanguage();
+  const isHealthy =
+    diseaseName.toLowerCase().includes("healthy") || diseaseName.includes("ஆரோக்கியமானது");
+  const isSevere =
+    severity.toLowerCase().includes("severe") || severity.includes("தீவிரமானது");
   const pct = Math.round(confidenceScore * 100);
 
   const severityColor = isHealthy
     ? "text-[#2D8A62] bg-[#E8F5EE] border-[#DCE7DF]"
-    : severity === "severe"
+    : isSevere
       ? "text-[#C96F62] bg-[#FBECE9] border-[#C96F62]/30"
       : "text-[#C98A4A] bg-[#FDF5EB] border-[#C98A4A]/30";
 
@@ -32,7 +35,7 @@ export const DiseaseCard: React.FC<DiseaseCardProps> = ({
         <div>
           <p className="text-xs text-[#668074] dark:text-[#B0C9BA] font-medium">{t.disease}</p>
           <h3 className="font-display text-xl font-bold text-[#163A2D] dark:text-[#F1F7F3] mt-1">
-            {diseaseName}
+            {tr(diseaseName)}
           </h3>
           {scientificName && (
             <p className="text-xs italic text-[#668074] dark:text-[#B0C9BA] mt-0.5">
@@ -53,31 +56,35 @@ export const DiseaseCard: React.FC<DiseaseCardProps> = ({
 
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-[#668074] dark:text-[#B0C9BA] font-medium">Severity:</span>
+          <span className="text-[#668074] dark:text-[#B0C9BA] font-medium">
+            {tr("Severity:")}
+          </span>
           <span
             className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize border ${severityColor}`}
           >
-            {severity}
+            {tr(severity)}
           </span>
         </div>
       </div>
 
-      {diseaseName === "Uncertain" && (
+      {(diseaseName === "Uncertain" || diseaseName.includes("Uncertain")) && (
         <div className="p-3.5 rounded-2xl bg-[#FDF5EB] border border-[#C98A4A]/30 text-xs text-[#C98A4A]">
-          Confidence was below threshold. Marked as Uncertain to prevent inaccurate diagnosis.
+          {tr(
+            "Confidence was below threshold. Marked as Uncertain to prevent inaccurate diagnosis."
+          )}
         </div>
       )}
 
       {symptoms && symptoms.length > 0 && (
         <div className="pt-3 border-t border-[#DCE7DF] dark:border-[#244737] space-y-2">
           <h4 className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-            Observed Symptoms
+            {tr("Observed Symptoms")}
           </h4>
           <ul className="space-y-1.5 text-xs text-[#668074] dark:text-[#B0C9BA]">
             {symptoms.map((s, idx) => (
-              <li key={idx} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#176B4D]" />
-                <span>{s}</span>
+              <li key={idx} className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#176B4D] shrink-0 mt-1.5" />
+                <span className="leading-relaxed">{tr(s)}</span>
               </li>
             ))}
           </ul>

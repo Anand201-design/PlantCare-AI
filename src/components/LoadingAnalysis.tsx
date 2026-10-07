@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Check, Loader2, Leaf } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 const STEPS = [
   "Image processed",
@@ -11,6 +12,7 @@ const STEPS = [
 
 export const LoadingAnalysis: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const { tr } = useLanguage();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -116,10 +118,10 @@ export const LoadingAnalysis: React.FC = () => {
           </div>
           <div>
             <h3 className="font-display text-xl font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              Analyzing your plant...
+              {tr("Analyzing your plant...")}
             </h3>
             <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-1">
-              Running botanical identification and foliar health checks
+              {tr("Running botanical identification and foliar health checks")}
             </p>
           </div>
         </div>
@@ -132,13 +134,13 @@ export const LoadingAnalysis: React.FC = () => {
             return (
               <li
                 key={step}
-                className={`flex items-center justify-between px-4 py-2.5 rounded-2xl border text-xs transition-all duration-300 ${
+                className={`flex items-center justify-between gap-2 px-4 py-2.5 rounded-2xl border text-xs transition-all duration-300 ${
                   isDone
                     ? "bg-[#F0F6F1]/95 dark:bg-[#1D3B2D]/95 border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3] font-semibold"
                     : "bg-[#F6F9F5]/90 dark:bg-[#12281E]/90 border-[#DCE7DF]/60 dark:border-[#244737]/60 text-[#668074] dark:text-[#B0C9BA]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <span
                     className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       isDone
@@ -148,10 +150,14 @@ export const LoadingAnalysis: React.FC = () => {
                   >
                     <Check className="w-3 h-3 stroke-[2.5]" />
                   </span>
-                  <span>{step}</span>
+                  <span className="truncate">{tr(step)}</span>
                 </div>
-                <span className="text-[11px] text-[#176B4D] dark:text-[#8EAD9B] font-medium">
-                  {isCurrent ? "Processing..." : isDone ? "Completed" : "Pending"}
+                <span className="text-[11px] text-[#176B4D] dark:text-[#8EAD9B] font-medium shrink-0">
+                  {isCurrent
+                    ? tr("Processing...")
+                    : isDone
+                      ? tr("Completed")
+                      : tr("Pending")}
                 </span>
               </li>
             );

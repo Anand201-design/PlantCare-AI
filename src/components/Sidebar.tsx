@@ -26,44 +26,49 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t, tr } = useLanguage();
   const { setTheme, resolvedTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const navItems = [
     {
       to: "/dashboard",
-      label: "Dashboard",
+      label: t.navDashboard,
       icon: LayoutDashboard,
     },
     {
       to: "/analyze?mode=identify",
-      label: "Identify Plant",
+      label: t.navIdentify,
       icon: Sprout,
     },
     {
       to: "/analyze?mode=disease",
-      label: "Disease Detection",
+      label: t.navDisease,
       icon: Stethoscope,
     },
     {
       to: "/plants",
-      label: "My Plants",
+      label: t.navMyPlants,
       icon: Leaf,
     },
     {
       to: "/history",
-      label: "Analysis History",
+      label: t.navHistory,
       icon: History,
     },
     {
       to: "/care",
-      label: "Care Recommendations",
+      label: t.navCare,
       icon: Sparkles,
     },
     {
+      to: "/assistant",
+      label: t.navAssistant,
+      icon: Sprout,
+    },
+    {
       to: "/settings",
-      label: "Settings",
+      label: t.navSettings,
       icon: Settings,
     },
   ];
@@ -374,6 +379,47 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
             <path
               d="M19.5 6.8L20.1 8.6L21.9 9.2L20.1 9.8L19.5 11.6L18.9 9.8L17.1 9.2L18.9 8.6L19.5 6.8Z"
               fill="currentColor"
+            />
+          </svg>
+        );
+
+      case "/assistant":
+        return (
+          <svg
+            viewBox="0 0 28 28"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className={baseClass}
+          >
+            <rect
+              x="1"
+              y="1"
+              width="26"
+              height="26"
+              rx="8"
+              className={
+                active
+                  ? "fill-[#176B4D]/14 dark:fill-[#8EAD9B]/20 stroke-[#176B4D]/30 dark:stroke-[#8EAD9B]/35"
+                  : "fill-[#F0F6F1] dark:fill-[#1D3B2D]/70 stroke-[#DCE7DF] dark:stroke-[#244737]"
+              }
+              strokeWidth="1"
+            />
+            {/* Chat bubble with botanical sprout */}
+            <path
+              d="M7 10C7 8.34 8.34 7 10 7H18C19.66 7 21 8.34 21 10V15.5C21 17.16 19.66 18.5 18 18.5H12.2L8.5 21.2V18.5C7.67 18.15 7 17.3 7 15.5V10Z"
+              fill="currentColor"
+              fillOpacity={active ? "0.26" : "0.14"}
+              stroke="currentColor"
+              strokeWidth="1.45"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M14 15.8V11.5M14 13.2C14 11.1 15.6 9.8 17.5 10C17.5 11.9 16 13.2 14 13.2ZM14 13.8C14 12 12.6 10.9 10.8 11.1C10.8 12.7 12.1 13.8 14 13.8Z"
+              stroke="currentColor"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </svg>
         );
@@ -693,15 +739,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
       {/* Bottom Controls */}
       <div className="space-y-3.5 pt-4 border-t border-[#DCE7DF] dark:border-[#244737] relative z-10">
         {/* Language Switcher */}
-        <div className="flex items-center justify-between px-1.5 text-xs text-[#668074] dark:text-[#B0C9BA]">
-          <span className="flex items-center gap-1.5 font-medium">
-            <Globe className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
-            Language
+        <div className="flex items-center justify-between gap-2 px-1.5 text-xs text-[#668074] dark:text-[#B0C9BA]">
+          <span className="flex items-center gap-1.5 font-medium shrink-0">
+            <Globe className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B] shrink-0" />
+            {t.languageLabel}
           </span>
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
-            className="bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] rounded-lg px-2 py-1 text-xs text-[#163A2D] dark:text-[#F1F7F3] font-medium focus:outline-none cursor-pointer"
+            aria-label="Select application language"
+            className="bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] rounded-lg px-2 py-1 text-xs text-[#163A2D] dark:text-[#F1F7F3] font-medium focus:outline-none cursor-pointer max-w-[140px]"
           >
             <option value="en">English (EN)</option>
             <option value="es">Español (ES)</option>
@@ -709,6 +756,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
             <option value="fr">Français (FR)</option>
             <option value="de">Deutsch (DE)</option>
             <option value="zh">中文 (ZH)</option>
+            <option value="ta">தமிழ் (TA)</option>
           </select>
         </div>
 
@@ -723,8 +771,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                 : "text-[#668074] dark:text-[#B0C9BA] hover:text-[#163A2D] dark:hover:text-[#F1F7F3]"
             }`}
           >
-            <Sun className="w-3.5 h-3.5 text-[#C98A4A]" />
-            <span>Light</span>
+            <Sun className="w-3.5 h-3.5 text-[#C98A4A] shrink-0" />
+            <span className="truncate">{t.lightModeShort}</span>
           </button>
           <button
             type="button"
@@ -735,8 +783,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                 : "text-[#668074] dark:text-[#B0C9BA] hover:text-[#163A2D] dark:hover:text-[#F1F7F3]"
             }`}
           >
-            <Moon className="w-3.5 h-3.5 text-[#8EAD9B]" />
-            <span>Dark</span>
+            <Moon className="w-3.5 h-3.5 text-[#8EAD9B] shrink-0" />
+            <span className="truncate">{t.darkModeShort}</span>
           </button>
         </div>
 
@@ -756,7 +804,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                   Emily Morgan
                 </p>
                 <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate leading-tight">
-                  Botanical Care
+                  {tr("Botanical Care")}
                 </p>
               </div>
             </div>
@@ -773,7 +821,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                 }}
                 className="block px-3 py-1.5 rounded-lg hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] transition-colors"
               >
-                Profile & Account
+                {tr("Profile & Account")}
               </Link>
               <Link
                 to="/history"
@@ -783,7 +831,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                 }}
                 className="block px-3 py-1.5 rounded-lg hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] transition-colors"
               >
-                Analysis History
+                {t.navHistory}
               </Link>
               <button
                 type="button"
@@ -793,7 +841,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                 }}
                 className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-medium transition-colors cursor-pointer"
               >
-                Preferences
+                {tr("Preferences")}
               </button>
             </div>
           )}

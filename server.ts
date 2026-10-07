@@ -594,149 +594,259 @@ app.get("/api/history", (_req, res) => {
   res.json(db.history);
 });
 
+app.delete("/api/history/:id", (req, res) => {
+  const db = loadDb();
+  const targetId = req.params.id;
+  const initialLen = db.history.length;
+  db.history = db.history.filter((h) => h.id !== targetId);
+  if (db.history.length === initialLen) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+  saveDb(db);
+  res.json({ deleted: true, id: targetId });
+});
+
 app.get("/api/results/:id", (req, res) => {
   const db = loadDb();
-  const found =
-    db.history.find((h) => h.id === req.params.id) || db.history[0];
+  const found = db.history.find((h) => h.id === req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
   res.json(found);
 });
 
-app.post("/api/analyze", upload.single("image") as unknown as express.RequestHandler, async (req, res) => {
-  const db = loadDb();
-  const presetKey = (req.body?.specimenPreset || "").toLowerCase();
+const SUPPORTED_GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.1-flash-lite"] as const;
 
-  if (presetKey && PRESET_RESULTS[presetKey]) {
-    const presetTemplate = PRESET_RESULTS[presetKey];
-    const created = {
-      ...presetTemplate,
-      id: `scan_${Date.now()}`,
-      created_at: new Date().toISOString(),
-    };
-    db.history.unshift(created);
-    saveDb(db);
-    res.json(created);
-    return;
+function getConfiguredGeminiModels(): string[] {
+  const envModel = (process.env.GEMINI_MODEL || "").trim().replace(/^models\//, "");
+  const isDeprecated =
+    !envModel ||
+    envModel.includes("2.5") ||
+    envModel.includes("2.0") ||
+    envModel.includes("1.5") ||
+    envModel === "gemini-pro";
+
+  if (!isDeprecated && !SUPPORTED_GEMINI_MODELS.includes(envModel as (typeof SUPPORTED_GEMINI_MODELS)[number])) {
+    return [envModel, ...SUPPORTED_GEMINI_MODELS];
   }
+  return [...SUPPORTED_GEMINI_MODELS];
+}
 
-  let savedImagePath = `/src/assets/images/${REAL_IMAGE_FILES.tomato}`;
-  if (req.file) {
-    const ext = req.file.mimetype.includes("png")
-      ? "png"
-      : req.file.mimetype.includes("webp")
-        ? "webp"
-        : "jpg";
-    const filename = `leaf_${Date.now()}.${ext}`;
-    const fullPath = path.join(UPLOADS_DIR, filename);
-    fs.writeFileSync(fullPath, req.file.buffer);
-    savedImagePath = `/uploads/${filename}`;
+function handleUploadMiddleware(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    const singleUpload = upload.single("image") as unknown as express.RequestHandler;
+    singleUpload(req, res, (err: unknown) => {
+      if (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Invalid image upload payload. Please upload a JPG, PNG, or WEBP image under 10 MB.";
+        res.status(400).json({ error: message, message });
+        return;
+      }
+      next();
+    });
+  } else {
+    next();
   }
+}
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && req.file) {
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      const base64Image = req.file.buffer.toString("base64");
-      const hint = req.body?.plant_hint ? `User hint: ${req.body.plant_hint}.` : "";
+app.post("/api/analyze", handleUploadMiddleware, async (req, res) => {
+  try {
+    const db = loadDb();
+    const presetKey = (req.body?.specimenPreset || "").toLowerCase();
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            inlineData: {
-              mimeType: req.file.mimetype || "image/jpeg",
-              data: base64Image,
-            },
-          },
-          {
-            text: `You are an expert botanist and plant pathologist. Analyze this plant image. ${hint} Return a JSON object with plant_name, scientific_name, family, disease_name (or "Healthy"), confidence_score (0 to 1), severity ("none", "mild", "moderate", "severe"), overall_status ("Healthy", "Mild Stress", "Moderate Stress", "Severe Stress"), health_score (0 to 100), symptoms (array of strings), possible_nutrient_deficiency, nutrient_deficiency_details, treatment_recommendations (array of strings), prevention_recommendations (array of strings).`,
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              plant_name: { type: Type.STRING },
-              scientific_name: { type: Type.STRING },
-              family: { type: Type.STRING },
-              disease_name: { type: Type.STRING },
-              confidence_score: { type: Type.NUMBER },
-              severity: { type: Type.STRING },
-              overall_status: { type: Type.STRING },
-              health_score: { type: Type.NUMBER },
-              symptoms: { type: Type.ARRAY, items: { type: Type.STRING } },
-              possible_nutrient_deficiency: { type: Type.STRING },
-              nutrient_deficiency_details: { type: Type.STRING },
-              treatment_recommendations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-              prevention_recommendations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-            },
+    if (presetKey && PRESET_RESULTS[presetKey]) {
+      const presetTemplate = PRESET_RESULTS[presetKey];
+      const created = {
+        ...presetTemplate,
+        id: `scan_${Date.now()}`,
+        created_at: new Date().toISOString(),
+      };
+      db.history.unshift(created);
+      saveDb(db);
+      res.json(created);
+      return;
+    }
+
+    let imageBuffer: Buffer | null = null;
+    let imageMimeType = "image/jpeg";
+    let originalName = "uploaded_leaf.jpg";
+
+    if (req.file && req.file.buffer) {
+      imageBuffer = req.file.buffer;
+      imageMimeType = req.file.mimetype || req.body?.mime_type || "image/jpeg";
+      originalName = req.file.originalname || originalName;
+    } else if (req.body?.imageBase64 && typeof req.body.imageBase64 === "string") {
+      const rawBase64 = req.body.imageBase64.replace(/^data:[^;]+;base64,/, "");
+      imageBuffer = Buffer.from(rawBase64, "base64");
+      imageMimeType = req.body.mime_type || req.body.mimeType || "image/jpeg";
+      originalName = req.body.filename || originalName;
+    }
+
+    let savedImagePath = `/src/assets/images/${REAL_IMAGE_FILES.tomato}`;
+    if (imageBuffer && imageBuffer.length > 0) {
+      const ext = imageMimeType.includes("png")
+        ? "png"
+        : imageMimeType.includes("webp")
+          ? "webp"
+          : "jpg";
+      const filename = `leaf_${Date.now()}.${ext}`;
+      const fullPath = path.join(UPLOADS_DIR, filename);
+      fs.writeFileSync(fullPath, imageBuffer);
+      savedImagePath = `/uploads/${filename}`;
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && imageBuffer && imageBuffer.length > 0) {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
           },
         },
       });
+      const base64Image = imageBuffer.toString("base64");
+      const hint = req.body?.plant_hint ? `User hint: ${req.body.plant_hint}.` : "";
+      const reqLang = (req.body?.language || "en").toLowerCase();
+      const langInstruction =
+        reqLang === "ta"
+          ? "IMPORTANT: The user's selected language is Tamil (தமிழ்). Return plant_name in Tamil with English in parentheses, keep scientific_name and family in standard Latin botanical terms, and write disease_name, symptoms, possible_nutrient_deficiency, nutrient_deficiency_details, treatment_recommendations, and prevention_recommendations in natural, readable Tamil (தமிழ்)."
+          : "";
 
-      if (response.text) {
-        const parsed = JSON.parse(response.text);
-        const resultRecord = {
-          id: `scan_${Date.now()}`,
-          plant_name: parsed.plant_name || "Botanical Specimen",
-          scientific_name: parsed.scientific_name || "Botanical cultivar",
-          family: parsed.family || "Angiosperms",
-          disease_name: parsed.disease_name || "Healthy",
-          confidence_score: parsed.confidence_score ?? 0.93,
-          severity: parsed.severity || "none",
-          overall_status: parsed.overall_status || "Healthy",
-          health_score: parsed.health_score ?? 88,
-          symptoms: parsed.symptoms || ["Foliar surface inspected"],
-          possible_nutrient_deficiency:
-            parsed.possible_nutrient_deficiency || "None detected",
-          nutrient_deficiency_details:
-            parsed.nutrient_deficiency_details ||
-            "Balanced foliar nutrition observed.",
-          treatment_recommendations: parsed.treatment_recommendations || [
-            "Maintain consistent watering and bright indirect light.",
-          ],
-          prevention_recommendations: parsed.prevention_recommendations || [
-            "Ensure good air circulation and well-draining soil.",
-          ],
-          image_path: savedImagePath,
-          created_at: new Date().toISOString(),
-        };
-        db.history.unshift(resultRecord);
-        saveDb(db);
-        res.json(resultRecord);
-        return;
+      const modelsToTry = getConfiguredGeminiModels();
+
+      for (const modelName of modelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: [
+              {
+                inlineData: {
+                  mimeType: imageMimeType,
+                  data: base64Image,
+                },
+              },
+              {
+                text: `You are an expert botanist and plant pathologist. Analyze this plant image. ${hint} ${langInstruction} Return a JSON object with plant_name, scientific_name, family, disease_name (or "Healthy"), confidence_score (0 to 1), severity ("none", "mild", "moderate", "severe"), overall_status ("Healthy", "Mild Stress", "Moderate Stress", "Severe Stress"), health_score (0 to 100), symptoms (array of strings), possible_nutrient_deficiency, nutrient_deficiency_details, treatment_recommendations (array of strings), prevention_recommendations (array of strings).`,
+              },
+            ],
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  plant_name: { type: Type.STRING },
+                  scientific_name: { type: Type.STRING },
+                  family: { type: Type.STRING },
+                  disease_name: { type: Type.STRING },
+                  confidence_score: { type: Type.NUMBER },
+                  severity: { type: Type.STRING },
+                  overall_status: { type: Type.STRING },
+                  health_score: { type: Type.NUMBER },
+                  symptoms: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  possible_nutrient_deficiency: { type: Type.STRING },
+                  nutrient_deficiency_details: { type: Type.STRING },
+                  treatment_recommendations: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                  },
+                  prevention_recommendations: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                  },
+                },
+              },
+            },
+          });
+
+          if (response.text) {
+            const parsed = JSON.parse(response.text);
+            const normalizedDisease =
+              !parsed.disease_name ||
+              parsed.disease_name.toLowerCase() === "none" ||
+              parsed.disease_name.toLowerCase() === "no disease"
+                ? "Healthy"
+                : parsed.disease_name;
+            const resultRecord = {
+              id: `scan_${Date.now()}`,
+              plant_name: parsed.plant_name || "Botanical Specimen",
+              scientific_name: parsed.scientific_name || "Botanical cultivar",
+              family: parsed.family || "Angiosperms",
+              disease_name: normalizedDisease,
+              confidence_score: parsed.confidence_score ?? 0.93,
+              severity: parsed.severity || "none",
+              overall_status: parsed.overall_status || "Healthy",
+              health_score: parsed.health_score ?? 88,
+              symptoms:
+                Array.isArray(parsed.symptoms) && parsed.symptoms.length > 0
+                  ? parsed.symptoms
+                  : ["Foliar surface inspected"],
+              possible_nutrient_deficiency:
+                parsed.possible_nutrient_deficiency || "None detected",
+              nutrient_deficiency_details:
+                parsed.nutrient_deficiency_details ||
+                "Balanced foliar nutrition observed.",
+              treatment_recommendations:
+                Array.isArray(parsed.treatment_recommendations) &&
+                parsed.treatment_recommendations.length > 0
+                  ? parsed.treatment_recommendations
+                  : ["Maintain consistent watering and bright indirect light."],
+              prevention_recommendations:
+                Array.isArray(parsed.prevention_recommendations) &&
+                parsed.prevention_recommendations.length > 0
+                  ? parsed.prevention_recommendations
+                  : ["Ensure good air circulation and well-draining soil."],
+              image_path: savedImagePath,
+              created_at: new Date().toISOString(),
+            };
+            db.history.unshift(resultRecord);
+            saveDb(db);
+            res.json(resultRecord);
+            return;
+          }
+        } catch (_modelErr) {
+          // Try next supported model in fallback chain
+          continue;
+        }
       }
-    } catch (err) {
-      console.warn("Gemini API fallback triggered:", err);
     }
-  }
 
-  // Match hint/filename if Gemini is unavailable, while always preserving the user's uploaded image_path
-  const hintKey = `${req.body?.plant_hint || ""} ${req.file?.originalname || ""}`.toLowerCase();
-  let template = INITIAL_HISTORY[1]; // Default healthy botanical specimen for user uploads
-  if (hintKey.includes("tomato") || hintKey.includes("blight") || hintKey.includes("spot")) {
-    template = INITIAL_HISTORY[0];
-  } else if (hintKey.includes("chilli") || hintKey.includes("pepper") || hintKey.includes("yellow")) {
-    template = INITIAL_HISTORY[2];
-  } else if (hintKey.includes("monstera")) {
-    template = INITIAL_HISTORY[3];
-  }
+    // Match hint/filename if all models are temporarily unreachable, while preserving the user's uploaded image_path
+    const hintKey = `${req.body?.plant_hint || ""} ${originalName}`.toLowerCase();
+    let template = INITIAL_HISTORY[1]; // Default healthy botanical specimen for user uploads
+    if (hintKey.includes("tomato") || hintKey.includes("blight") || hintKey.includes("spot")) {
+      template = INITIAL_HISTORY[0];
+    } else if (hintKey.includes("chilli") || hintKey.includes("pepper") || hintKey.includes("yellow")) {
+      template = INITIAL_HISTORY[2];
+    } else if (hintKey.includes("monstera")) {
+      template = INITIAL_HISTORY[3];
+    }
 
-  const fallbackRecord = {
-    ...template,
-    id: `scan_${Date.now()}`,
-    image_path: savedImagePath,
-    created_at: new Date().toISOString(),
-  };
-  db.history.unshift(fallbackRecord);
-  saveDb(db);
-  res.json(fallbackRecord);
+    const fallbackRecord = {
+      ...template,
+      id: `scan_${Date.now()}`,
+      image_path: savedImagePath,
+      created_at: new Date().toISOString(),
+    };
+    db.history.unshift(fallbackRecord);
+    saveDb(db);
+    res.json(fallbackRecord);
+  } catch (err: unknown) {
+    const rawMessage = err instanceof Error ? err.message : "Unexpected server error";
+    res.status(500).json({
+      error: "Plant health analysis failed",
+      message: rawMessage.replace(/AIza[0-9A-Za-z-_]{30,}/g, "[REDACTED]"),
+    });
+  }
 });
 
 app.get("/api/recommendations", (_req, res) => {
@@ -766,6 +876,300 @@ app.post("/api/sensors", (req, res) => {
   db.sensors.unshift(entry);
   saveDb(db);
   res.status(201).json(entry);
+});
+
+const LANGUAGE_NAME_MAP: Record<string, string> = {
+  en: "English",
+  ta: "Tamil (தமிழ்)",
+  hi: "Hindi (हिन्दी)",
+  es: "Spanish (Español)",
+  fr: "French (Français)",
+  de: "German (Deutsch)",
+  zh: "Simplified Chinese (中文)",
+};
+
+app.post("/api/assistant", handleUploadMiddleware, async (req, res) => {
+  try {
+    const db = loadDb();
+    const rawMessage = String(req.body?.message || "").trim();
+    const selectedPlantId = String(req.body?.plantId || "").trim();
+    const reqLang = String(req.body?.language || "en").trim().toLowerCase();
+    const languageName = LANGUAGE_NAME_MAP[reqLang] || "English";
+
+    let imageBuffer: Buffer | null = null;
+    let imageMimeType = "image/jpeg";
+    let savedImageUrl: string | undefined;
+
+    if (req.file && req.file.buffer) {
+      imageBuffer = req.file.buffer;
+      imageMimeType = req.file.mimetype || req.body?.mime_type || "image/jpeg";
+    } else if (req.body?.imageBase64 && typeof req.body.imageBase64 === "string") {
+      const rawBase64 = req.body.imageBase64.replace(/^data:[^;]+;base64,/, "");
+      imageBuffer = Buffer.from(rawBase64, "base64");
+      imageMimeType = req.body.mime_type || req.body.mimeType || "image/jpeg";
+    }
+
+    if (imageBuffer && imageBuffer.length > 0) {
+      const ext = imageMimeType.includes("png")
+        ? "png"
+        : imageMimeType.includes("webp")
+          ? "webp"
+          : "jpg";
+      const filename = `assistant_${Date.now()}.${ext}`;
+      const fullPath = path.join(UPLOADS_DIR, filename);
+      fs.writeFileSync(fullPath, imageBuffer);
+      savedImageUrl = `/uploads/${filename}`;
+    }
+
+    if (!rawMessage && (!imageBuffer || imageBuffer.length === 0)) {
+      res.status(400).json({
+        error: "Please enter a question or attach a plant image.",
+        message: "Please enter a question or attach a plant image.",
+      });
+      return;
+    }
+
+    // Gather real available plant context if a plant is selected
+    const selectedPlant = selectedPlantId
+      ? db.plants.find((p) => p.id === selectedPlantId)
+      : undefined;
+
+    let plantContextSummary = "No specific plant selected by the user.";
+    if (selectedPlant) {
+      const matchingAnalyses = db.history.filter(
+        (h) =>
+          h.plant_name.toLowerCase().includes(selectedPlant.plantName.toLowerCase()) ||
+          selectedPlant.plantName.toLowerCase().includes(h.plant_name.toLowerCase()) ||
+          (h.scientific_name &&
+            selectedPlant.scientificName &&
+            h.scientific_name.toLowerCase() === selectedPlant.scientificName.toLowerCase())
+      );
+
+      const matchingRecs = db.recommendations.filter(
+        (r) =>
+          r.plantId === selectedPlant.id ||
+          r.plantName.toLowerCase() === selectedPlant.plantName.toLowerCase()
+      );
+
+      const latestAnalysis = matchingAnalyses[0];
+
+      plantContextSummary = [
+        `Selected Plant Profile:`,
+        `- Plant Name: ${selectedPlant.plantName}`,
+        `- Scientific Name: ${selectedPlant.scientificName || "Not recorded"}`,
+        `- Category: ${selectedPlant.category || "Not recorded"}`,
+        `- Location: ${selectedPlant.location || "Not recorded"}`,
+        `- Current Health Score: ${selectedPlant.latestHealthScore ?? "Not recorded"}%`,
+        `- Current Status: ${selectedPlant.latestStatus || "Not recorded"}`,
+        `- Recorded Condition/Disease: ${selectedPlant.latestDisease || "None"}`,
+        `- Soil Type: ${selectedPlant.soilType || "Not recorded"}`,
+        `- Sunlight Requirement: ${selectedPlant.sunlightRequirement || "Not recorded"}`,
+        `- Watering Requirement: ${selectedPlant.waterRequirement || "Not recorded"}`,
+        `- Temperature Range: ${selectedPlant.temperatureRange || "Not recorded"}`,
+        `- Notes: ${selectedPlant.notes || "None"}`,
+        latestAnalysis
+          ? `Latest Diagnostic Analysis (${latestAnalysis.created_at}):\n  - Diagnosis: ${latestAnalysis.disease_name} (Confidence: ${Math.round((latestAnalysis.confidence_score || 0) * 100)}%, Severity: ${latestAnalysis.severity})\n  - Health Score: ${latestAnalysis.health_score}%\n  - Observed Symptoms: ${(latestAnalysis.symptoms || []).join("; ")}\n  - Nutrient Assessment: ${latestAnalysis.possible_nutrient_deficiency || "None"} (${latestAnalysis.nutrient_deficiency_details || ""})\n  - Previous Treatment Recommendations: ${(latestAnalysis.treatment_recommendations || []).join("; ")}\n  - Prevention Steps: ${(latestAnalysis.prevention_recommendations || []).join("; ")}`
+          : `Previous Diagnostic Analyses: None recorded for this plant.`,
+        matchingRecs.length > 0
+          ? `Active Care Recommendations:\n  - ${matchingRecs.map((r) => `${r.recommendation} (${r.category}, priority: ${r.priority}): ${r.recommendedAction}`).join("\n  - ")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    // Parse recent conversation history if provided
+    let historyContext = "";
+    if (req.body?.history) {
+      try {
+        const parsedHistory =
+          typeof req.body.history === "string"
+            ? JSON.parse(req.body.history)
+            : req.body.history;
+        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+          const recentTurns = parsedHistory.slice(-6);
+          historyContext =
+            "Recent conversation turns:\n" +
+            recentTurns
+              .map(
+                (m: { role?: string; content?: string }) =>
+                  `${m.role === "assistant" ? "AI Plant Assistant" : "User"}: ${String(m.content || "").slice(0, 500)}`
+              )
+              .join("\n");
+        }
+      } catch {
+        // ignore malformed history
+      }
+    }
+
+    const formatTemplate =
+      reqLang === "ta"
+        ? [
+            `🌱 பதில்:`,
+            `[1–2 எளிய வாக்கியங்களில் நேரடி பதில்]`,
+            ``,
+            `💡 செய்ய வேண்டியவை:`,
+            `• [படி 1]`,
+            `• [படி 2]`,
+            `• [படி 3]`,
+            ``,
+            `⚠️ கவனிக்க வேண்டியவை:`,
+            `[தேவையெனில் ஒரு சிறிய எச்சரிக்கை அல்லது குறிப்பு]`,
+          ].join("\n")
+        : [
+            `🌱 Answer:`,
+            `[One short direct answer in 1–2 simple sentences]`,
+            ``,
+            `💡 What to do:`,
+            `• [Step 1]`,
+            `• [Step 2]`,
+            `• [Step 3]`,
+            ``,
+            `⚠️ Watch for:`,
+            `[One short warning or tip if necessary]`,
+          ].join("\n");
+
+    const systemInstruction = [
+      `You are the PlantCare AI Assistant. Give short, simple, beginner-friendly, and practical plant-care answers.`,
+      `STRICT LANGUAGE RULE:`,
+      `- The user's selected application language is ${languageName} (code: "${reqLang}").`,
+      `- Understand the user's question whether it is written in Tamil, Tamil-English mixed (Tanglish), English, or another language, and ALWAYS respond 100% in ${languageName}.`,
+      `- If Tamil (ta) is selected, write in natural, simple everyday Tamil without unnecessary English words (keep Latin scientific names only when helpful).`,
+      `STRICT CONCISE RESPONSE STYLE (50–120 WORDS MAXIMUM):`,
+      `- NEVER write long paragraphs or essays. Keep the entire response around 50–120 words (or 1–4 short sentences for very simple questions).`,
+      `- Do NOT repeat the user's question or add filler greetings.`,
+      `- Give the most important direct answer first.`,
+      `- Use 3–5 short bullet points (•) for actions.`,
+      `- Use simple everyday language. Avoid heavy scientific jargon; if a technical term is needed, explain it in one simple sentence.`,
+      `- Use this clean structure (localized to ${languageName}):`,
+      formatTemplate,
+      `PLANT CONTEXT & SAFETY RULES:`,
+      `- Use the provided Selected Plant Profile and Previous Diagnostic Analysis when available. Do NOT invent plant details that are not provided.`,
+      `- If no plant is selected, give practical general advice and briefly mention they can select a saved plant for tailored care.`,
+      `- For uncertain symptoms, say "This may be..." (or its ${languageName} equivalent), give practical next steps, and suggest uploading a clear leaf photo when visual inspection helps.`,
+      `- For severe plant damage, briefly suggest consulting a local gardening or agriculture expert.`,
+      `- Do not use markdown bold asterisks (**text**) or code fences; keep plain text with the section emojis and bullet points (•) so it reads cleanly and speaks naturally via Text-to-Speech.`,
+    ].join("\n");
+
+    const userPrompt = [
+      plantContextSummary,
+      historyContext,
+      imageBuffer
+        ? `The user attached a plant photo for visual inspection.`
+        : `No image was attached.`,
+      `User Question: ${rawMessage || "Please check this plant image and tell me what to do in simple steps."}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          },
+        },
+      });
+
+      const modelsToTry = getConfiguredGeminiModels();
+
+      for (const modelName of modelsToTry) {
+        try {
+          const parts: Array<
+            | { inlineData: { mimeType: string; data: string } }
+            | { text: string }
+          > = [];
+
+          if (imageBuffer && imageBuffer.length > 0) {
+            parts.push({
+              inlineData: {
+                mimeType: imageMimeType,
+                data: imageBuffer.toString("base64"),
+              },
+            });
+          }
+          parts.push({ text: userPrompt });
+
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: parts,
+            config: {
+              systemInstruction,
+              temperature: 0.3,
+            },
+          });
+
+          const replyText = response.text?.trim();
+          if (replyText) {
+            const cleanedReply = replyText.replace(/\*\*/g, "").trim();
+            res.json({
+              id: `msg_${Date.now()}`,
+              reply: cleanedReply,
+              plantId: selectedPlant?.id,
+              plantName: selectedPlant?.plantName,
+              imageUrl: savedImageUrl,
+              model: modelName,
+              createdAt: new Date().toISOString(),
+            });
+            return;
+          }
+        } catch (_modelErr) {
+          continue;
+        }
+      }
+    }
+
+    // Concise context-aware fallback if upstream AI is temporarily unreachable
+    const plantLabel = selectedPlant
+      ? `${selectedPlant.plantName} (${selectedPlant.scientificName})`
+      : reqLang === "ta"
+        ? "உங்கள் செடி"
+        : "your plant";
+
+    const fallbackReply =
+      reqLang === "ta"
+        ? [
+            `🌱 பதில்:`,
+            `${plantLabel} ஆரோக்கியமாக வளர மண்ணின் ஈரப்பதம் மற்றும் வெளிச்சத்தைச் சரியாகப் பராமரிக்க வேண்டும்.${selectedPlant ? ` (தற்போதைய ஆரோக்கியம்: ${selectedPlant.latestHealthScore ?? 90}%)` : ""}`,
+            ``,
+            `💡 செய்ய வேண்டியவை:`,
+            `• மேல் மண் 2–3 செ.மீ காய்ந்த பிறகு மட்டும் தண்ணீர் ஊற்றவும்.`,
+            `• ${selectedPlant?.sunlightRequirement ? "போதுமான வெளிச்சம் கிடைக்கும் இடத்தில் வைக்கவும்." : "தினமும் மிதமான சூரிய ஒளி கிடைக்குமாறு வைக்கவும்."}`,
+            `• பாதிக்கப்பட்ட அல்லது பழுத்த இலைகளை அகற்றி விடவும்.`,
+            ``,
+            `⚠️ கவனிக்க வேண்டியவை:`,
+            `அதிகப்படியான நீர் வேர்களைப் பாதிக்கலாம். துல்லியமான ஆய்வுக்கு இலையின் தெளிவான புகைப்படத்தைப் பதிவேற்றவும்.`,
+          ].join("\n")
+        : [
+            `🌱 Answer:`,
+            `This may be caused by watering imbalance, light stress, or mild nutrient deficiency in ${plantLabel}.${selectedPlant ? ` (Current health score: ${selectedPlant.latestHealthScore ?? 90}%)` : ""}`,
+            ``,
+            `💡 What to do:`,
+            `• Check the top 2–3 cm of soil and water only when it feels dry.`,
+            `• Ensure ${selectedPlant?.sunlightRequirement?.toLowerCase() || "steady bright indirect sunlight"} and good pot drainage.`,
+            `• Upload a clear leaf photo if spots or yellowing spread.`,
+            ``,
+            `⚠️ Watch for:`,
+            `Avoid overwatering, as soggy soil can quickly damage the roots.`,
+          ].join("\n");
+
+    res.json({
+      id: `msg_${Date.now()}`,
+      reply: fallbackReply,
+      plantId: selectedPlant?.id,
+      plantName: selectedPlant?.plantName,
+      imageUrl: savedImageUrl,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err: unknown) {
+    const rawErr = err instanceof Error ? err.message : "Unexpected assistant error";
+    res.status(500).json({
+      error: "Unable to get a response from AI Plant Assistant",
+      message: rawErr.replace(/AIza[0-9A-Za-z-_]{30,}/g, "[REDACTED]"),
+    });
+  }
 });
 
 async function startServer() {

@@ -22,6 +22,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { LoadingAnalysis } from "../components/LoadingAnalysis";
+import { AudioSpeechButton } from "../components/AudioSpeechButton";
 import { plantService, DiagnosticResult } from "../services/plantService";
 import { useLanguage } from "../context/LanguageContext";
 import {
@@ -86,7 +87,7 @@ export const AnalyzePlant: React.FC = () => {
 
   const initialPlantId = searchParams.get("plantId") || "";
   const presetParam = searchParams.get("preset") || "";
-  const { language } = useLanguage();
+  const { language, t, tr, localizeDiagnosticResult } = useLanguage();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -384,6 +385,16 @@ export const AnalyzePlant: React.FC = () => {
   ];
 
   const hasImageReady = Boolean(previewUrl || selectedFile || selectedPreset);
+  const localizedInline = inlineResult ? localizeDiagnosticResult(inlineResult) : null;
+  const inlineNarration = localizedInline
+    ? language === "ta"
+      ? `${localizedInline.plant_name}. ஒட்டுமொத்த நிலை: ${localizedInline.overall_status}. ஆரோக்கிய மதிப்பெண்: ${localizedInline.health_score} சதவீதம். நோய் கண்டறிதல்: ${localizedInline.disease_name}. ${
+          localizedInline.treatment_recommendations?.[0]
+            ? `பரிந்துரை: ${localizedInline.treatment_recommendations[0]}`
+            : ""
+        }`
+      : `${localizedInline.plant_name}. Status: ${localizedInline.overall_status}. Health score: ${localizedInline.health_score} percent. Diagnosis: ${localizedInline.disease_name}.`
+    : "";
 
   return (
     <div className="space-y-6 pb-16 max-w-[1280px] mx-auto font-sans antialiased text-[#163A2D] dark:text-[#F1F7F3] transition-colors duration-200">
@@ -468,8 +479,8 @@ export const AnalyzePlant: React.FC = () => {
                     : "text-[#163A2D] dark:text-[#B0C9BA] font-medium hover:bg-[#E4F0E7] dark:hover:bg-[#1D3B2D]"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>All-in-One</span>
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>{tr("All-in-One")}</span>
               </button>
 
               <button
@@ -483,8 +494,8 @@ export const AnalyzePlant: React.FC = () => {
                     : "text-[#163A2D] dark:text-[#B0C9BA] font-medium hover:bg-[#E4F0E7] dark:hover:bg-[#1D3B2D]"
                 }`}
               >
-                <Sprout className="w-3.5 h-3.5" />
-                <span>Identify Plant</span>
+                <Sprout className="w-3.5 h-3.5 shrink-0" />
+                <span>{t.navIdentify}</span>
               </button>
 
               <button
@@ -498,23 +509,25 @@ export const AnalyzePlant: React.FC = () => {
                     : "text-[#163A2D] dark:text-[#B0C9BA] font-medium hover:bg-[#E4F0E7] dark:hover:bg-[#1D3B2D]"
                 }`}
               >
-                <Stethoscope className="w-3.5 h-3.5" />
-                <span>Disease Detection</span>
+                <Stethoscope className="w-3.5 h-3.5 shrink-0" />
+                <span>{t.navDisease}</span>
               </button>
             </div>
 
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] border border-[#DCE7DF] dark:border-[#244737] text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B]">
               <span className="w-2 h-2 rounded-full bg-[#2D8A62] shrink-0" />
-              <span>AI Diagnostic Engine Ready</span>
+              <span>{tr("AI Diagnostic Engine Ready")}</span>
             </div>
           </div>
 
           <div className="space-y-2 max-w-3xl">
             <h1 className="font-display text-2xl sm:text-3xl lg:text-[34px] font-bold text-[#163A2D] dark:text-[#F1F7F3] tracking-tight leading-tight">
-              Plant Health & Disease Analysis
+              {tr("Plant Health & Disease Analysis")}
             </h1>
             <p className="text-sm sm:text-base text-[#668074] dark:text-[#B0C9BA] leading-relaxed">
-              Comprehensive foliar diagnostics: identify species, diagnose health problems, and get personalized care recommendations.
+              {tr(
+                "Comprehensive foliar diagnostics: identify species, diagnose health problems, and get personalized care recommendations."
+              )}
             </p>
           </div>
         </div>
@@ -528,13 +541,13 @@ export const AnalyzePlant: React.FC = () => {
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#176B4D] dark:text-[#8EAD9B] block">
-              STEP 01
+              {tr("STEP 01")}
             </span>
             <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] mt-0.5">
-              Upload Photo
+              {tr("Upload Photo")}
             </h2>
             <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5">
-              Select a clear leaf or plant image
+              {tr("Select a clear leaf or plant image")}
             </p>
           </div>
         </div>
@@ -545,13 +558,13 @@ export const AnalyzePlant: React.FC = () => {
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#176B4D] dark:text-[#8EAD9B] block">
-              STEP 02
+              {tr("STEP 02")}
             </span>
             <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] mt-0.5">
-              AI Analysis
+              {tr("AI Analysis")}
             </h2>
             <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5">
-              Identify species & detect disease
+              {tr("Identify species & detect disease")}
             </p>
           </div>
         </div>
@@ -562,13 +575,13 @@ export const AnalyzePlant: React.FC = () => {
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#176B4D] dark:text-[#8EAD9B] block">
-              STEP 03
+              {tr("STEP 03")}
             </span>
             <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] mt-0.5">
-              Results & Care
+              {tr("Results & Care")}
             </h2>
             <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5">
-              Get diagnosis & care recommendations
+              {tr("Get diagnosis & care recommendations")}
             </p>
           </div>
         </div>
@@ -583,21 +596,21 @@ export const AnalyzePlant: React.FC = () => {
             {/* LEFT COLUMN: Image Upload / Plant Preview Card */}
             <div className="lg:col-span-7 space-y-5">
               <div className="bg-white dark:bg-[#173126] rounded-[24px] p-6 sm:p-7 border border-[#DCE7DF] dark:border-[#244737] shadow-[0_2px_10px_rgba(22,58,45,0.04)] space-y-5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h2 className="font-display text-lg font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                      Upload Plant Photo
+                      {tr("Upload Plant Photo")}
                     </h2>
                     <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5">
-                      Use a clear, well-lit photo of the leaf or plant area.
+                      {tr("Use a clear, well-lit photo of the leaf or plant area.")}
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#F0F6F1] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#F0F6F1] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737] shrink-0">
                     {activeTab === "identify"
-                      ? "Species ID"
+                      ? tr("Species ID")
                       : activeTab === "disease"
-                        ? "Disease Check"
-                        : "Full Diagnostics"}
+                        ? tr("Disease Check")
+                        : tr("Full Diagnostics")}
                   </span>
                 </div>
 
@@ -636,10 +649,10 @@ export const AnalyzePlant: React.FC = () => {
                       <Leaf className="w-6 h-6" />
                     </div>
                     <p className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                      Drop your plant image here
+                      {tr("Drop your plant image here")}
                     </p>
                     <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5">
-                      or browse from your device (JPG, PNG, WEBP up to 10 MB)
+                      {tr("or browse from your device (JPG, PNG, WEBP up to 10 MB)")}
                     </p>
 
                     <div
@@ -651,8 +664,8 @@ export const AnalyzePlant: React.FC = () => {
                         onClick={() => fileInputRef.current?.click()}
                         className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#176B4D] hover:bg-[#12563D] rounded-xl shadow-2xs cursor-pointer"
                       >
-                        <ImageIcon className="w-3.5 h-3.5" />
-                        <span>Browse Image</span>
+                        <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span>{tr("Browse Image")}</span>
                       </button>
 
                       <button
@@ -660,8 +673,8 @@ export const AnalyzePlant: React.FC = () => {
                         onClick={startCamera}
                         className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-xl cursor-pointer"
                       >
-                        <Camera className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
-                        <span>Use Camera</span>
+                        <Camera className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B] shrink-0" />
+                        <span>{tr("Use Camera")}</span>
                       </button>
 
                       <button
@@ -669,8 +682,8 @@ export const AnalyzePlant: React.FC = () => {
                         onClick={handleClipboardPaste}
                         className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#668074] dark:text-[#B0C9BA] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-xl cursor-pointer"
                       >
-                        <Clipboard className="w-3.5 h-3.5" />
-                        <span>Paste</span>
+                        <Clipboard className="w-3.5 h-3.5 shrink-0" />
+                        <span>{tr("Paste")}</span>
                       </button>
                     </div>
                   </div>
@@ -681,14 +694,14 @@ export const AnalyzePlant: React.FC = () => {
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-[#8EAD9B] flex items-center gap-1.5">
                         <ScanLine className="w-4 h-4 animate-pulse" />
-                        Camera Active
+                        {tr("Camera Active")}
                       </span>
                       <button
                         type="button"
                         onClick={stopCamera}
                         className="text-white/80 hover:text-white flex items-center gap-1 cursor-pointer"
                       >
-                        <X className="w-4 h-4" /> Close
+                        <X className="w-4 h-4" /> {tr("Close")}
                       </button>
                     </div>
                     <div className="relative aspect-4/3 max-h-[340px] rounded-xl overflow-hidden bg-black mx-auto">
@@ -706,7 +719,7 @@ export const AnalyzePlant: React.FC = () => {
                         onClick={capturePhoto}
                         className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-[#176B4D] rounded-xl cursor-pointer"
                       >
-                        <Camera className="w-4 h-4" /> Capture Photo
+                        <Camera className="w-4 h-4" /> {tr("Capture Photo")}
                       </button>
                     </div>
                   </div>
@@ -750,11 +763,11 @@ export const AnalyzePlant: React.FC = () => {
                           {selectedFile
                             ? selectedFile.name
                             : selectedPreset
-                              ? selectedPreset.label
-                              : "Plant photo"}
+                              ? tr(selectedPreset.label)
+                              : tr("Plant photo")}
                         </p>
                         <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                          Image ready for AI diagnostic analysis
+                          {tr("Image ready for AI diagnostic analysis")}
                         </p>
                       </div>
 
@@ -764,14 +777,14 @@ export const AnalyzePlant: React.FC = () => {
                           onClick={handleClear}
                           className="px-3 py-2 text-xs font-medium text-[#668074] dark:text-[#B0C9BA] rounded-xl cursor-pointer"
                         >
-                          Change
+                          {tr("Change")}
                         </button>
                         <button
                           type="submit"
                           className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-[#176B4D] hover:bg-[#12563D] rounded-xl cursor-pointer"
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Analyze Plant Health</span>
+                          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                          <span>{tr("Analyze Plant Health")}</span>
                         </button>
                       </div>
                     </div>
@@ -779,29 +792,29 @@ export const AnalyzePlant: React.FC = () => {
                 )}
 
                 {(validationError || cameraError) && (
-                  <div className="p-3 rounded-xl bg-[#FBECE9] dark:bg-[#2A1612] border border-[#C96F62]/30 text-xs text-[#C96F62] flex items-center justify-between">
-                    <span>{validationError || cameraError}</span>
+                  <div className="p-3 rounded-xl bg-[#FBECE9] dark:bg-[#2A1612] border border-[#C96F62]/30 text-xs text-[#C96F62] flex items-center justify-between gap-2">
+                    <span>{tr(validationError || cameraError || "")}</span>
                     <button
                       type="button"
                       onClick={() => {
                         setValidationError(null);
                         setCameraError(null);
                       }}
-                      className="text-xs font-semibold underline cursor-pointer"
+                      className="text-xs font-semibold underline cursor-pointer shrink-0"
                     >
-                      Dismiss
+                      {tr("Dismiss")}
                     </button>
                   </div>
                 )}
 
                 {/* Sample Images Section */}
                 <div className="space-y-3 pt-3 border-t border-[#DCE7DF] dark:border-[#244737]">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3] uppercase tracking-wider">
-                      Try a Sample Specimen
+                      {tr("Try a Sample Specimen")}
                     </h3>
                     <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                      Click to test instant analysis
+                      {tr("Click to test instant analysis")}
                     </span>
                   </div>
 
@@ -836,7 +849,7 @@ export const AnalyzePlant: React.FC = () => {
                             )}
                           </div>
                           <p className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
-                            {preset.label}
+                            {tr(preset.label)}
                           </p>
                           <p className="text-[10px] italic text-[#668074] dark:text-[#B0C9BA] truncate">
                             {preset.scientificName}
@@ -851,16 +864,19 @@ export const AnalyzePlant: React.FC = () => {
 
             {/* RIGHT COLUMN: Analysis Card */}
             <div className="lg:col-span-5 space-y-5">
-              {inlineResult ? (
+              {localizedInline && inlineResult ? (
                 isIdentifyMode ? (
                   <div className="bg-white dark:bg-[#173126] rounded-[24px] p-6 sm:p-7 border border-[#DCE7DF] dark:border-[#244737] shadow-[0_2px_10px_rgba(22,58,45,0.04)] space-y-5">
-                    <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#668074] dark:text-[#B0C9BA]">
-                        Species Identified
+                        {tr("Species Identified")}
                       </span>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#E8F5EE] dark:bg-[#1D3B2D] text-[#2D8A62] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
-                        {Math.round(inlineResult.confidence_score * 100)}% Match
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <AudioSpeechButton text={inlineNarration} label={t.listen} size="sm" />
+                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#E8F5EE] dark:bg-[#1D3B2D] text-[#2D8A62] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
+                          {Math.round(localizedInline.confidence_score * 100)}% {tr("Match")}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -873,7 +889,7 @@ export const AnalyzePlant: React.FC = () => {
                             inlineResult.scientific_name
                           )
                         }
-                        alt={`Identified plant: ${inlineResult.plant_name}`}
+                        alt={`Identified plant: ${localizedInline.plant_name}`}
                         referrerPolicy="no-referrer"
                         onError={(e) =>
                           handlePlantImageError(
@@ -885,11 +901,11 @@ export const AnalyzePlant: React.FC = () => {
                         className="w-20 h-20 rounded-2xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0 shadow-2xs"
                       />
                       <div className="min-w-0">
-                        <h3 className="font-display text-2xl font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
-                          {inlineResult.plant_name}
+                        <h3 className="font-display text-xl sm:text-2xl font-bold text-[#163A2D] dark:text-[#F1F7F3] break-words">
+                          {localizedInline.plant_name}
                         </h3>
                         <p className="text-sm italic text-[#668074] dark:text-[#B0C9BA] mt-0.5 truncate">
-                          {inlineResult.scientific_name || "Botanical cultivar"}
+                          {localizedInline.scientific_name || "Botanical cultivar"}
                         </p>
                       </div>
                     </div>
@@ -897,35 +913,35 @@ export const AnalyzePlant: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737]">
                         <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA] block">
-                          Botanical Family
+                          {tr("Botanical Family")}
                         </span>
                         <span className="font-display text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3] mt-0.5 block">
-                          {inlineResult.family || "Angiosperms"}
+                          {localizedInline.family || "Angiosperms"}
                         </span>
                       </div>
                       <div className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737]">
                         <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA] block">
-                          Plant Health
+                          {tr("Plant Health")}
                         </span>
                         <span className="font-display text-sm font-bold text-[#2D8A62] mt-0.5 block">
-                          {inlineResult.health_score || 92}% Vitality
+                          {localizedInline.health_score || 92}% {tr("Vitality")}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-2.5 pt-1">
                       <h4 className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                        Essential Care Guide
+                        {tr("Essential Care Guide")}
                       </h4>
                       <div className="grid grid-cols-2 gap-2.5 text-xs">
                         <div className="p-3 rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] flex items-start gap-2">
                           <Sun className="w-4 h-4 text-[#C98A4A] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-semibold block text-[#163A2D] dark:text-[#F1F7F3]">
-                              Sunlight
+                              {tr("Sunlight")}
                             </span>
                             <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                              Bright indirect light
+                              {tr("Bright indirect light")}
                             </span>
                           </div>
                         </div>
@@ -933,10 +949,10 @@ export const AnalyzePlant: React.FC = () => {
                           <Droplets className="w-4 h-4 text-[#176B4D] dark:text-[#8EAD9B] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-semibold block text-[#163A2D] dark:text-[#F1F7F3]">
-                              Watering
+                              {tr("Watering")}
                             </span>
                             <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                              When top 2&quot; is dry
+                              {tr('When top 2" is dry')}
                             </span>
                           </div>
                         </div>
@@ -944,10 +960,10 @@ export const AnalyzePlant: React.FC = () => {
                           <Layers className="w-4 h-4 text-[#2D8A62] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-semibold block text-[#163A2D] dark:text-[#F1F7F3]">
-                              Soil Type
+                              {tr("Soil Type")}
                             </span>
                             <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                              Well-draining mix
+                              {tr("Well-draining mix")}
                             </span>
                           </div>
                         </div>
@@ -955,10 +971,10 @@ export const AnalyzePlant: React.FC = () => {
                           <Thermometer className="w-4 h-4 text-[#C96F62] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-semibold block text-[#163A2D] dark:text-[#F1F7F3]">
-                              Temperature
+                              {tr("Temperature")}
                             </span>
                             <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                              18°C – 27°C ideal
+                              {tr("18°C – 27°C ideal")}
                             </span>
                           </div>
                         </div>
@@ -978,13 +994,13 @@ export const AnalyzePlant: React.FC = () => {
                       >
                         {savedToPlants ? (
                           <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Saved to My Plants</span>
+                            <Check className="w-3.5 h-3.5 shrink-0" />
+                            <span>{tr("Saved to My Plants")}</span>
                           </>
                         ) : (
                           <>
-                            <Bookmark className="w-3.5 h-3.5" />
-                            <span>Save to My Plants</span>
+                            <Bookmark className="w-3.5 h-3.5 shrink-0" />
+                            <span>{tr("Save to My Plants")}</span>
                           </>
                         )}
                       </button>
@@ -993,20 +1009,23 @@ export const AnalyzePlant: React.FC = () => {
                         to={`/results/${inlineResult.id}?mode=identify`}
                         className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] rounded-xl"
                       >
-                        <span>View Full Botanical Profile</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span>{tr("View Full Botanical Profile")}</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                       </Link>
                     </div>
                   </div>
                 ) : (
                   <div className="bg-white dark:bg-[#173126] rounded-[24px] p-6 sm:p-7 border border-[#DCE7DF] dark:border-[#244737] shadow-[0_2px_10px_rgba(22,58,45,0.04)] space-y-5">
-                    <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#668074] dark:text-[#B0C9BA]">
-                        Analysis Result
+                        {tr("Analysis Result")}
                       </span>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#E8F5EE] dark:bg-[#1D3B2D] text-[#2D8A62] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
-                        {inlineResult.overall_status || "Diagnosed"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <AudioSpeechButton text={inlineNarration} label={t.listen} size="sm" />
+                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#E8F5EE] dark:bg-[#1D3B2D] text-[#2D8A62] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
+                          {localizedInline.overall_status || tr("Diagnosed")}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -1020,7 +1039,7 @@ export const AnalyzePlant: React.FC = () => {
                             inlineResult.disease_name
                           )
                         }
-                        alt={`Analyzed leaf for ${inlineResult.plant_name} — ${inlineResult.disease_name}`}
+                        alt={`Analyzed leaf for ${localizedInline.plant_name} — ${localizedInline.disease_name}`}
                         referrerPolicy="no-referrer"
                         onError={(e) =>
                           handlePlantImageError(
@@ -1032,12 +1051,14 @@ export const AnalyzePlant: React.FC = () => {
                         className="w-20 h-20 rounded-2xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0 shadow-2xs"
                       />
                       <div className="min-w-0">
-                        <h3 className="font-display text-xl sm:text-2xl font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                          {inlineResult.disease_name}
+                        <h3 className="font-display text-lg sm:text-xl font-bold text-[#163A2D] dark:text-[#F1F7F3] break-words">
+                          {localizedInline.disease_name}
                         </h3>
-                        <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5 truncate">
-                          {inlineResult.plant_name}{" "}
-                          {inlineResult.scientific_name ? `(${inlineResult.scientific_name})` : ""}
+                        <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5 break-words">
+                          {localizedInline.plant_name}{" "}
+                          {localizedInline.scientific_name
+                            ? `(${localizedInline.scientific_name})`
+                            : ""}
                         </p>
                       </div>
                     </div>
@@ -1045,40 +1066,42 @@ export const AnalyzePlant: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737]">
                         <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA] block">
-                          Confidence
+                          {t.confidence}
                         </span>
                         <span className="font-display text-lg font-bold text-[#163A2D] dark:text-[#F1F7F3] mt-0.5 block">
-                          {Math.round(inlineResult.confidence_score * 100)}%
+                          {Math.round(localizedInline.confidence_score * 100)}%
                         </span>
                       </div>
                       <div className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737]">
                         <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA] block">
-                          Severity
+                          {tr("Severity")}
                         </span>
-                        <span className="font-display text-lg font-bold capitalize text-[#163A2D] dark:text-[#F1F7F3] mt-0.5 block">
-                          {inlineResult.severity || "None"}
+                        <span className="font-display text-base sm:text-lg font-bold capitalize text-[#163A2D] dark:text-[#F1F7F3] mt-0.5 block">
+                          {localizedInline.severity || tr("None")}
                         </span>
                       </div>
                     </div>
 
-                    {inlineResult.treatment_recommendations &&
-                      inlineResult.treatment_recommendations.length > 0 && (
+                    {localizedInline.treatment_recommendations &&
+                      localizedInline.treatment_recommendations.length > 0 && (
                         <div className="space-y-2 pt-2 border-t border-[#DCE7DF] dark:border-[#244737]">
                           <h4 className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                            Recommended next steps
+                            {tr("Recommended next steps")}
                           </h4>
                           <div className="space-y-2">
-                            {inlineResult.treatment_recommendations.slice(0, 3).map((rec, idx) => (
-                              <div
-                                key={idx}
-                                className="p-3 rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] flex items-start gap-2.5 text-xs text-[#163A2D] dark:text-[#F1F7F3]"
-                              >
-                                <span className="w-5 h-5 rounded-full bg-[#176B4D] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                                  {idx + 1}
-                                </span>
-                                <span>{rec}</span>
-                              </div>
-                            ))}
+                            {localizedInline.treatment_recommendations
+                              .slice(0, 3)
+                              .map((rec, idx) => (
+                                <div
+                                  key={idx}
+                                  className="p-3 rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] flex items-start gap-2.5 text-xs text-[#163A2D] dark:text-[#F1F7F3]"
+                                >
+                                  <span className="w-5 h-5 rounded-full bg-[#176B4D] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                                    {idx + 1}
+                                  </span>
+                                  <span>{rec}</span>
+                                </div>
+                              ))}
                           </div>
                         </div>
                       )}
@@ -1088,8 +1111,8 @@ export const AnalyzePlant: React.FC = () => {
                         to={`/results/${inlineResult.id}?mode=disease`}
                         className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] rounded-xl"
                       >
-                        <span>View Full Report</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span>{tr("View Full Report")}</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                       </Link>
                     </div>
                   </div>
@@ -1181,12 +1204,12 @@ export const AnalyzePlant: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-display text-lg font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                        Analyzing your plant...
+                        {tr("Analyzing your plant...")}
                       </h3>
                       <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
                         {hasImageReady
-                          ? "Photo selected — click Analyze Plant Health to run checks"
-                          : "Automated 5-stage botanical diagnostic pipeline"}
+                          ? tr("Photo selected — click Analyze Plant Health to run checks")
+                          : tr("Automated 5-stage botanical diagnostic pipeline")}
                       </p>
                     </div>
                   </div>
@@ -1197,20 +1220,20 @@ export const AnalyzePlant: React.FC = () => {
                       return (
                         <li
                           key={stepLabel}
-                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl border text-xs transition-colors ${
+                          className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl border text-xs transition-colors ${
                             stepActive
                               ? "bg-[#E4F0E7]/70 dark:bg-[#1D3B2D] border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3] font-semibold"
                               : "bg-[#F6F9F5] dark:bg-[#12281E] border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3] font-medium"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <span className="w-5 h-5 rounded-full bg-[#176B4D] dark:bg-[#2D8A62] text-white flex items-center justify-center shrink-0">
                               <Check className="w-3 h-3 stroke-[2.5]" />
                             </span>
-                            <span>{stepLabel}</span>
+                            <span className="truncate">{tr(stepLabel)}</span>
                           </div>
-                          <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                            {stepActive ? "Ready" : "Included"}
+                          <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA] shrink-0">
+                            {stepActive ? tr("Ready") : tr("Included")}
                           </span>
                         </li>
                       );
@@ -1219,7 +1242,7 @@ export const AnalyzePlant: React.FC = () => {
 
                   <div className="relative z-10 pt-3 border-t border-[#DCE7DF] dark:border-[#244737] space-y-2.5">
                     <span className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3] block">
-                      Observed symptoms (optional)
+                      {tr("Observed symptoms (optional)")}
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {symptomOptions.map((sym) => {
@@ -1235,7 +1258,7 @@ export const AnalyzePlant: React.FC = () => {
                                 : "bg-[#E4F0E7] dark:bg-[#1D3B2D] border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3]"
                             }`}
                           >
-                            {sym}
+                            {tr(sym)}
                           </button>
                         );
                       })}
@@ -1247,8 +1270,8 @@ export const AnalyzePlant: React.FC = () => {
                       type="submit"
                       className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#176B4D] hover:bg-[#12563D] transition-all shadow-2xs cursor-pointer"
                     >
-                      <Sparkles className="w-4 h-4" />
-                      <span>Analyze Plant Health</span>
+                      <Sparkles className="w-4 h-4 shrink-0" />
+                      <span>{tr("Analyze Plant Health")}</span>
                     </button>
                   </div>
                 </div>
@@ -1258,8 +1281,8 @@ export const AnalyzePlant: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-[#FBECE9] dark:bg-[#2A1612] border border-[#C96F62]/40 flex items-start gap-3 text-xs text-[#C96F62]">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="font-bold block">Analysis Notice:</strong>
-                    <p className="mt-0.5 leading-relaxed">{errorMessage}</p>
+                    <strong className="font-bold block">{tr("Analysis Notice:")}</strong>
+                    <p className="mt-0.5 leading-relaxed">{tr(errorMessage)}</p>
                   </div>
                 </div>
               )}
@@ -1270,61 +1293,64 @@ export const AnalyzePlant: React.FC = () => {
 
       {/* 4. RECENT PLANT ANALYSES */}
       <section className="bg-white dark:bg-[#173126] rounded-[24px] p-6 sm:p-7 border border-[#DCE7DF] dark:border-[#244737] shadow-[0_2px_10px_rgba(22,58,45,0.03)] space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#DCE7DF] dark:border-[#244737]">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#DCE7DF] dark:border-[#244737]">
           <div>
             <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              Recent Plant Analyses
+              {tr("Recent Plant Analyses")}
             </h3>
             <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-              Previous species identifications and foliar health reports
+              {tr("Previous species identifications and foliar health reports")}
             </p>
           </div>
           <Link
             to="/history"
             className="text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] hover:underline flex items-center gap-1"
           >
-            <span>View history</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <span>{tr("View history")}</span>
+            <ArrowRight className="w-3.5 h-3.5 shrink-0" />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
           {recentAnalyses.length > 0 ? (
-            recentAnalyses.map((item) => (
-              <div
-                key={item.id}
-                onClick={() =>
-                  navigate(`/results/${item.id}?mode=${isIdentifyMode ? "identify" : "disease"}`)
-                }
-                className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] flex items-center gap-3 cursor-pointer"
-              >
-                <img
-                  src={resolveRealisticPlantImage(
-                    item.image_path,
-                    item.plant_name,
-                    item.scientific_name,
-                    item.disease_name
-                  )}
-                  alt={`${item.plant_name} — ${item.disease_name}`}
-                  referrerPolicy="no-referrer"
-                  onError={(e) =>
-                    handlePlantImageError(e, item.plant_name, item.scientific_name)
+            recentAnalyses.map((rawItem) => {
+              const item = localizeDiagnosticResult(rawItem);
+              return (
+                <div
+                  key={item.id}
+                  onClick={() =>
+                    navigate(`/results/${item.id}?mode=${isIdentifyMode ? "identify" : "disease"}`)
                   }
-                  className="w-12 h-12 rounded-xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-bold text-xs text-[#163A2D] dark:text-[#F1F7F3] truncate">
-                    {item.plant_name}
-                  </h4>
-                  <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate">
-                    {item.disease_name}
-                  </p>
+                  className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] flex items-center gap-3 cursor-pointer"
+                >
+                  <img
+                    src={resolveRealisticPlantImage(
+                      rawItem.image_path,
+                      rawItem.plant_name,
+                      rawItem.scientific_name,
+                      rawItem.disease_name
+                    )}
+                    alt={`${item.plant_name} — ${item.disease_name}`}
+                    referrerPolicy="no-referrer"
+                    onError={(e) =>
+                      handlePlantImageError(e, rawItem.plant_name, rawItem.scientific_name)
+                    }
+                    className="w-12 h-12 rounded-xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-xs text-[#163A2D] dark:text-[#F1F7F3] truncate">
+                      {item.plant_name}
+                    </h4>
+                    <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate">
+                      {item.disease_name}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="col-span-3 text-center py-6 text-xs text-[#668074] dark:text-[#B0C9BA]">
-              No previous records found. Upload a plant photo above to begin.
+              {tr("No previous records found. Upload a plant photo above to begin.")}
             </div>
           )}
         </div>

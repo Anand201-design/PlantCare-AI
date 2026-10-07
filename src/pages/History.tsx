@@ -1,269 +1,410 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { Search, ArrowUpRight, ScanLine, X, CheckCircle2, AlertTriangle } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Search,
+  Calendar,
+  ArrowRight,
+  ScanLine,
+  CheckCircle2,
+  AlertTriangle,
+  Sprout,
+  Stethoscope,
+  Trash2,
+  AlertCircle,
+} from "lucide-react";
 import { plantService, DiagnosticResult } from "../services/plantService";
-import { VoiceInputButton } from "../components/VoiceInputButton";
-import { AudioSpeechButton } from "../components/AudioSpeechButton";
 import {
   resolveRealisticPlantImage,
   handlePlantImageError,
 } from "../utils/plantImageResolver";
+import { useLanguage } from "../context/LanguageContext";
+import { DeleteAnalysisModal } from "../components/DeleteAnalysisModal";
+
+type TypeFilter = "all" | "healthy" | "disease";
 
 export const History: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialPlantFilter = searchParams.get("plant") || "";
-
-  const [history, setHistory] = useState<DiagnosticResult[]>([]);
+  const { language, tr, localizeDiagnosticResult } = useLanguage();
+  const [records, setRecords] = useState<DiagnosticResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState(initialPlantFilter);
-  const [filter, setFilter] = useState<"all" | "healthy" | "stressed">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+
+  const [analysisToDelete, setAnalysisToDelete] = useState<DiagnosticResult | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
-    setLoading(true);
     plantService
       .getAnalysisHistory()
-      .then((res) => setHistory(res))
+      .then((data) => setRecords(data))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = history.filter((item) => {
-    const matchesSearch =
-      !query.trim() ||
-      item.plant_name.toLowerCase().includes(query.toLowerCase()) ||
-      item.disease_name.toLowerCase().includes(query.toLowerCase()) ||
-      (item.possible_nutrient_deficiency || "").toLowerCase().includes(query.toLowerCase());
+  const showFeedback = (type: "success" | "error", message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => {
+      setFeedback((prev) => (prev?.message === message ? null : prev));
+    }, 3500);
+  };
 
-    const isHealthy = item.overall_status?.toLowerCase() === "healthy";
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "healthy" && isHealthy) ||
-      (filter === "stressed" && !isHealthy);
+  const handleConfirmDelete = async () => {
+    if (!analysisToDelete) return;
+    setIsDeleting(true);
+    try {
+      await plantService.deleteAnalysis(analysisToDelete.id);
+      setRecords((prev) => prev.filter((item) => item.id !== analysisToDelete.id));
+      setAnalysisToDelete(null);
+      showFeedback("success", tr("Analysis deleted successfully."));
+    } catch {
+      setAnalysisToDelete(null);
+      showFeedback(
+        "error",
+        tr("Unable to delete this analysis. Please try again.")
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
-    return matchesSearch && matchesFilter;
-  });
+  const filteredRecords = useMemo(() => {
+    return records.filter((rec) => {
+      const locRec = localizeDiagnosticResult(rec);
+      const matchesSearch =
+        !searchQuery.trim() ||
+        rec.plant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        locRec.plant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (rec.scientific_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rec.disease_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        locRec.disease_name.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const historyNarration = `Analysis History: ${history.length} saved plant reports. Filter reports by healthy or attention needed, or search by plant name.`;
+      if (!matchesSearch) return false;
+      const isHealthy =
+        rec.disease_name === "Healthy" || rec.overall_status === "Healthy";
+      if (typeFilter === "healthy") return isHealthy;
+      if (typeFilter === "disease") return !isHealthy;
+      return true;
+    });
+  }, [records, searchQuery, typeFilter, localizeDiagnosticResult]);
+
+  const dateLocale =
+    language === "ta"
+      ? "ta-IN"
+      : language === "hi"
+        ? "hi-IN"
+        : language === "es"
+          ? "es-ES"
+          : language === "fr"
+            ? "fr-FR"
+            : language === "de"
+              ? "de-DE"
+              : language === "zh"
+                ? "zh-CN"
+                : "en-US";
 
   return (
-    <div className="space-y-7 pb-16 max-w-[1240px] mx-auto font-sans antialiased text-[#163A2D] dark:text-[#F1F7F3]">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div className="space-y-2">
-          <nav
-            aria-label="Breadcrumb"
-            className="flex items-center gap-1.5 text-xs text-[#668074] dark:text-[#B0C9BA]"
-          >
-            <Link
-              to="/dashboard"
-              className="hover:text-[#176B4D] dark:hover:text-[#8EAD9B] transition-colors"
-            >
-              PlantCare AI
+    <div className="space-y-8 pb-16 font-sans max-w-[1320px] mx-auto">
+      {/* Toast Feedback */}
+      {feedback && (
+        <div
+          role="status"
+          className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-2 border ${
+            feedback.type === "success"
+              ? "bg-[#176B4D] text-white border-[#12563D]"
+              : "bg-white dark:bg-[#173126] text-[#C96F62] border-[#C96F62]/40"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 shrink-0" />
+          )}
+          <span>{feedback.message}</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#DCE7DF] dark:border-[#244737] pb-6">
+        <div>
+          <nav className="flex items-center gap-2 text-xs text-[#668074] dark:text-[#B0C9BA] mb-2">
+            <Link to="/dashboard" className="hover:text-[#176B4D] transition-colors">
+              {tr("Dashboard")}
             </Link>
             <span>/</span>
-            <span className="font-semibold text-[#163A2D] dark:text-[#F1F7F3]">
-              Analysis History
+            <span className="text-[#163A2D] dark:text-[#F1F7F3] font-semibold">
+              {tr("Analysis History")}
             </span>
           </nav>
-
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#163A2D] dark:text-[#F1F7F3] tracking-tight">
-              Analysis History
-            </h1>
-            <p className="text-sm text-[#668074] dark:text-[#B0C9BA] mt-1">
-              Review your past plant identifications, disease checks, and care recommendations.
-            </p>
-          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#163A2D] dark:text-[#F1F7F3] tracking-tight">
+            {tr("Analysis History")}
+          </h1>
+          <p className="text-sm text-[#668074] dark:text-[#B0C9BA] mt-1">
+            {tr(
+              "Complete archive of plant identifications, leaf disease diagnoses, and health reports."
+            )}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <AudioSpeechButton text={historyNarration} label="Listen" size="sm" />
-          <Link
-            to="/analyze?mode=disease"
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-[#176B4D] hover:bg-[#12563D] rounded-xl transition-all shadow-2xs whitespace-nowrap cursor-pointer"
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => navigate("/analyze?mode=identify")}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer"
           >
-            <ScanLine className="w-4 h-4" />
-            <span>New Analysis</span>
-          </Link>
+            <Sprout className="w-4 h-4" />
+            <span>{tr("Identify Plant")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/analyze?mode=disease")}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#176B4D] hover:bg-[#12563D] cursor-pointer"
+          >
+            <Stethoscope className="w-4 h-4" />
+            <span>{tr("Detect Disease")}</span>
+          </button>
         </div>
       </div>
 
-      {/* Search and Segmented Filter Buttons */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-[20px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-[#668074] dark:text-[#B0C9BA] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-[#668074] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search plant name, condition, or symptom..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full pl-9 pr-10 py-2 text-xs bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] rounded-xl text-[#163A2D] dark:text-[#F1F7F3] focus:outline-none focus:border-[#176B4D]"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={tr("Search history by plant or condition...")}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs sm:text-sm bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3] placeholder:text-[#668074]/70 focus:outline-none focus:border-[#176B4D]"
           />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <VoiceInputButton onTranscript={(spoken) => setQuery(spoken)} />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="p-1 text-[#668074] hover:text-[#163A2D] cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-[#F0F6F1] dark:bg-[#12281E] rounded-xl self-start sm:self-auto border border-[#DCE7DF] dark:border-[#244737]">
-          <button
-            type="button"
-            onClick={() => setFilter("all")}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-              filter === "all"
-                ? "bg-white dark:bg-[#173126] text-[#163A2D] dark:text-[#F1F7F3] shadow-2xs"
-                : "text-[#668074] dark:text-[#B0C9BA] hover:text-[#163A2D]"
-            }`}
-          >
-            All ({history.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("healthy")}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-              filter === "healthy"
-                ? "bg-white dark:bg-[#173126] text-[#163A2D] dark:text-[#F1F7F3] shadow-2xs"
-                : "text-[#668074] dark:text-[#B0C9BA] hover:text-[#163A2D]"
-            }`}
-          >
-            Healthy
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("stressed")}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-              filter === "stressed"
-                ? "bg-white dark:bg-[#173126] text-[#163A2D] dark:text-[#F1F7F3] shadow-2xs"
-                : "text-[#668074] dark:text-[#B0C9BA] hover:text-[#163A2D]"
-            }`}
-          >
-            Needs Care
-          </button>
+        <div className="inline-flex flex-wrap items-center p-1 rounded-xl bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] gap-1 self-start">
+          {(
+            [
+              { id: "all", label: `${tr("All Scans")} (${records.length})` },
+              { id: "healthy", label: tr("Healthy Specimens") },
+              { id: "disease", label: tr("Disease / Stress Detected") },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTypeFilter(tab.id)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                typeFilter === tab.id
+                  ? "bg-[#176B4D] text-white"
+                  : "text-[#668074] dark:text-[#B0C9BA] hover:text-[#163A2D] dark:hover:text-[#F1F7F3]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* History Clean White Table Card */}
-      <section className="bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-[22px] overflow-hidden shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
-        {loading ? (
-          <div className="p-8 space-y-3">
-            {[1, 2, 3].map((i) => (
+      {/* List */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((n) => (
+            <div
+              key={n}
+              className="h-24 rounded-2xl bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] animate-pulse"
+            />
+          ))}
+        </div>
+      ) : records.length === 0 ? (
+        <div className="rounded-[24px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] p-12 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center mx-auto">
+            <ScanLine className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-display text-lg font-bold text-[#163A2D] dark:text-[#F1F7F3]">
+              {tr("No analysis history yet")}
+            </h3>
+            <p className="text-xs sm:text-sm text-[#668074] dark:text-[#B0C9BA]">
+              {tr("Upload a plant image to start your first analysis.")}
+            </p>
+          </div>
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => navigate("/analyze?mode=identify")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#176B4D] hover:bg-[#12563D] transition-colors cursor-pointer"
+            >
+              <Sprout className="w-4 h-4" />
+              <span>{tr("Identify Plant")}</span>
+            </button>
+          </div>
+        </div>
+      ) : filteredRecords.length === 0 ? (
+        <div className="rounded-[24px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] p-12 text-center space-y-3">
+          <ScanLine className="w-10 h-10 text-[#176B4D] mx-auto" />
+          <h3 className="font-display text-lg font-bold text-[#163A2D] dark:text-[#F1F7F3]">
+            {tr("No analysis records found")}
+          </h3>
+          <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
+            {tr("Upload a plant photo to generate your first diagnostic report.")}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {filteredRecords.map((rawRec) => {
+            const rec = localizeDiagnosticResult(rawRec);
+            const isHealthy =
+              rawRec.disease_name === "Healthy" || rawRec.overall_status === "Healthy";
+            const analysisTypeLabel = isHealthy
+              ? tr("Plant Identification")
+              : tr("Disease Detection");
+            const formattedDateTime = rawRec.created_at
+              ? new Date(rawRec.created_at).toLocaleString(dateLocale, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : tr("Recent scan");
+
+            return (
               <div
-                key={i}
-                className="h-14 bg-[#F6F9F5] dark:bg-[#12281E] rounded-xl animate-pulse"
-              />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-12 text-center space-y-2">
-            <p className="text-sm font-semibold text-[#163A2D] dark:text-[#F1F7F3]">
-              No analysis records found
-            </p>
-            <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-              Upload a plant photo to generate your first identification or health report.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-[#DCE7DF] dark:border-[#244737] bg-[#F6F9F5] dark:bg-[#12281E] text-[#668074] dark:text-[#B0C9BA] font-semibold">
-                  <th className="py-3.5 px-6">Plant</th>
-                  <th className="py-3.5 px-4">Condition / Diagnosis</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Health Score</th>
-                  <th className="py-3.5 px-4 text-right">Confidence</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-6 text-right">Report</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#DCE7DF] dark:divide-[#244737]">
-                {filtered.map((item) => {
-                  const isHealthy = item.overall_status?.toLowerCase() === "healthy";
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => navigate(`/results/${item.id}`)}
-                      className="hover:bg-[#F6F9F5] dark:hover:bg-[#1D3B2D]/40 transition-colors cursor-pointer"
+                key={rec.id}
+                onClick={() =>
+                  navigate(`/results/${rec.id}`, { state: { result: rawRec } })
+                }
+                className="p-4 sm:p-5 rounded-[20px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] hover:border-[#8EAD9B] flex flex-col lg:flex-row lg:items-center justify-between gap-4 cursor-pointer transition-all shadow-[0_2px_8px_rgba(22,58,45,0.03)]"
+              >
+                <div className="flex items-start sm:items-center gap-4 min-w-0">
+                  <img
+                    src={resolveRealisticPlantImage(
+                      rawRec.image_path,
+                      rawRec.plant_name,
+                      rawRec.scientific_name,
+                      rawRec.disease_name
+                    )}
+                    alt={`${rawRec.plant_name} — ${rawRec.disease_name}`}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) =>
+                      handlePlantImageError(
+                        e,
+                        rawRec.plant_name,
+                        rawRec.scientific_name
+                      )
+                    }
+                    className="w-16 h-16 rounded-2xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0"
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
+                        {rec.plant_name}
+                      </h3>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#F6F9F5] dark:bg-[#12281E] text-[#176B4D] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
+                        {isHealthy ? (
+                          <Sprout className="w-3 h-3" />
+                        ) : (
+                          <Stethoscope className="w-3 h-3" />
+                        )}
+                        <span>{analysisTypeLabel}</span>
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                          isHealthy
+                            ? "bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B]"
+                            : "bg-[#F8E9E5] dark:bg-[#2A1612] text-[#C96F62]"
+                        }`}
+                      >
+                        {isHealthy ? (
+                          <CheckCircle2 className="w-3 h-3" />
+                        ) : (
+                          <AlertTriangle className="w-3 h-3" />
+                        )}
+                        <span>{rec.disease_name}</span>
+                      </span>
+                    </div>
+                    <p className="text-xs italic text-[#668074] dark:text-[#B0C9BA] truncate">
+                      {rawRec.scientific_name || "Botanical specimen"}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-[#668074] dark:text-[#B0C9BA]">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {formattedDateTime}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {tr("Confidence")}:{" "}
+                        {Math.round((rawRec.confidence_score || 0.95) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-[#DCE7DF] dark:border-[#244737] shrink-0">
+                  <div className="text-left lg:text-right mr-1">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-[#668074] dark:text-[#B0C9BA] block">
+                      {tr("Health Score")}
+                    </span>
+                    <span
+                      className={`font-display text-lg font-extrabold ${
+                        rec.health_score >= 85
+                          ? "text-[#176B4D] dark:text-[#8EAD9B]"
+                          : "text-[#C96F62]"
+                      }`}
                     >
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={resolveRealisticPlantImage(
-                              item.image_path,
-                              item.plant_name,
-                              item.scientific_name,
-                              item.disease_name
-                            )}
-                            alt={`${item.plant_name} (${item.scientific_name || "specimen"}) — ${item.disease_name}`}
-                            referrerPolicy="no-referrer"
-                            loading="lazy"
-                            onError={(e) =>
-                              handlePlantImageError(e, item.plant_name, item.scientific_name)
-                            }
-                            className="w-11 h-11 rounded-xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0"
-                          />
-                          <div>
-                            <span className="font-bold text-[#163A2D] dark:text-[#F1F7F3] block">
-                              {item.plant_name}
-                            </span>
-                            {item.scientific_name && (
-                              <span className="italic block text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                                {item.scientific_name}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 font-semibold text-[#163A2D] dark:text-[#F1F7F3]">
-                        {item.disease_name}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                            isHealthy
-                              ? "bg-[#E8F5EE] dark:bg-[#1D3B2D] text-[#2D8A62] dark:text-[#8EAD9B] border-[#DCE7DF] dark:border-[#244737]"
-                              : "bg-[#FBECE9] dark:bg-[#2A1612] text-[#C96F62] border-[#C96F62]/30"
-                          }`}
-                        >
-                          {isHealthy ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3" />
-                          )}
-                          <span>{item.overall_status}</span>
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right font-bold text-[#176B4D] dark:text-[#8EAD9B] tabular-nums">
-                        {item.health_score}%
-                      </td>
-                      <td className="py-4 px-4 text-right font-medium text-[#668074] dark:text-[#B0C9BA] tabular-nums">
-                        {Math.round(item.confidence_score * 100)}%
-                      </td>
-                      <td className="py-4 px-4 text-[#668074] dark:text-[#B0C9BA]">
-                        {item.created_at
-                          ? new Date(item.created_at).toLocaleDateString()
-                          : "Recent"}
-                      </td>
-                      <td className="py-4 px-6 text-right">
-                        <span className="inline-flex items-center gap-1 font-semibold text-[#176B4D] dark:text-[#8EAD9B] hover:underline">
-                          View <ArrowUpRight className="w-3.5 h-3.5" />
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                      {rec.health_score}%
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/results/${rec.id}`, {
+                          state: { result: rawRec },
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#F6F9F5] dark:bg-[#12281E] hover:bg-[#E4F0E7] dark:hover:bg-[#1D3B2D] border border-[#DCE7DF] dark:border-[#244737] transition-colors cursor-pointer"
+                    >
+                      <span>{tr("View Details")}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <div className="h-5 w-px bg-[#DCE7DF] dark:bg-[#244737]" />
+
+                    <button
+                      type="button"
+                      title={tr("Delete analysis")}
+                      aria-label={tr("Delete analysis")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAnalysisToDelete(rawRec);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#668074] dark:text-[#B0C9BA] hover:text-[#C96F62] dark:hover:text-[#E08A7E] bg-transparent hover:bg-[#F8E9E5]/60 dark:hover:bg-[#2A1612]/60 border border-transparent hover:border-[#C96F62]/25 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{tr("Delete")}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      <DeleteAnalysisModal
+        analysis={analysisToDelete}
+        isDeleting={isDeleting}
+        onCancel={() => setAnalysisToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 };

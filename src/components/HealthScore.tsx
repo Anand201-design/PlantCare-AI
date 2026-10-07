@@ -14,7 +14,7 @@ export const HealthScore: React.FC<HealthScoreProps> = ({
   confidenceScore,
   symptoms,
 }) => {
-  const { t } = useLanguage();
+  const { t, tr } = useLanguage();
 
   const statusColor =
     healthScore >= 85
@@ -41,14 +41,16 @@ export const HealthScore: React.FC<HealthScoreProps> = ({
             </span>
           </p>
           <h3 className="font-display text-xl font-bold text-[#163A2D] dark:text-[#F1F7F3] mt-1">
-            Estimated Plant Health:{" "}
+            {tr("Estimated Plant Health:")}{" "}
             <span className="tabular-nums text-[#176B4D] dark:text-[#8EAD9B]">{healthScore}%</span>
           </h3>
         </div>
 
         <div className="text-left sm:text-right">
-          <span className="text-xs text-[#668074] dark:text-[#B0C9BA] block">Overall Status</span>
-          <span className={`text-base font-bold ${statusColor}`}>{overallStatus}</span>
+          <span className="text-xs text-[#668074] dark:text-[#B0C9BA] block">
+            {tr("Overall Status")}
+          </span>
+          <span className={`text-base font-bold ${statusColor}`}>{tr(overallStatus)}</span>
         </div>
       </div>
 
@@ -59,23 +61,23 @@ export const HealthScore: React.FC<HealthScoreProps> = ({
             style={{ width: `${Math.min(100, Math.max(5, healthScore))}%` }}
           />
         </div>
-        <div className="flex justify-between text-xs text-[#668074] dark:text-[#B0C9BA]">
-          <span>0% (Needs Care)</span>
-          <span>50% (Moderate)</span>
-          <span>100% (Healthy)</span>
+        <div className="flex flex-wrap justify-between gap-2 text-xs text-[#668074] dark:text-[#B0C9BA]">
+          <span>{tr("0% (Needs Care)")}</span>
+          <span>{tr("50% (Moderate)")}</span>
+          <span>{tr("100% (Healthy)")}</span>
         </div>
       </div>
 
       {symptoms && symptoms.length > 0 && (
         <div className="pt-4 border-t border-[#DCE7DF] dark:border-[#244737] space-y-2">
           <h4 className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-            Observed Health Indicators
+            {tr("Observed Health Indicators")}
           </h4>
           <ul className="space-y-1.5 text-xs text-[#668074] dark:text-[#B0C9BA]">
             {symptoms.map((s, idx) => (
-              <li key={idx} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#176B4D]" />
-                <span>{s}</span>
+              <li key={idx} className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#176B4D] shrink-0 mt-1.5" />
+                <span className="leading-relaxed">{tr(s)}</span>
               </li>
             ))}
           </ul>

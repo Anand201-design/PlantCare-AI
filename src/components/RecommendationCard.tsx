@@ -12,7 +12,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   preventionRecs,
   disclaimer,
 }) => {
-  const { t } = useLanguage();
+  const { t, tr } = useLanguage();
 
   return (
     <section className="bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-[22px] p-6 space-y-6 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
@@ -21,7 +21,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
           {t.recommendations}
         </h3>
         <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-0.5">
-          Actionable care steps and preventive botanical practices
+          {tr("Actionable care steps and preventive botanical practices")}
         </p>
       </div>
 
@@ -40,11 +40,13 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   <span className="w-5 h-5 rounded-full bg-[#176B4D] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
                     {i + 1}
                   </span>
-                  <span className="leading-relaxed">{rec}</span>
+                  <span className="leading-relaxed">{tr(rec)}</span>
                 </li>
               ))
             ) : (
-              <li className="text-[#668074]">Continue standard watering and light care.</li>
+              <li className="text-[#668074]">
+                {tr("Continue standard watering and light care.")}
+              </li>
             )}
           </ul>
         </div>
@@ -63,11 +65,13 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   <span className="w-5 h-5 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
                     {i + 1}
                   </span>
-                  <span className="leading-relaxed">{rec}</span>
+                  <span className="leading-relaxed">{tr(rec)}</span>
                 </li>
               ))
             ) : (
-              <li className="text-[#668074]">Maintain good air circulation around foliage.</li>
+              <li className="text-[#668074]">
+                {tr("Maintain good air circulation around foliage.")}
+              </li>
             )}
           </ul>
         </div>
@@ -75,7 +79,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
 
       {disclaimer && (
         <div className="pt-3 border-t border-[#DCE7DF] dark:border-[#244737] text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-          {disclaimer}
+          {tr(disclaimer)}
         </div>
       )}
     </section>

@@ -24,7 +24,12 @@ import {
   Check,
   Calendar,
   Bookmark,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import { DeleteAnalysisModal } from "../components/DeleteAnalysisModal";
+import { DashboardStatCard } from "../components/DashboardStatCard";
 import {
   plantService,
   PlantProfileItem,
@@ -39,6 +44,8 @@ import {
   resolveRealisticPlantImage,
   handlePlantImageError,
 } from "../utils/plantImageResolver";
+import { useLanguage } from "../context/LanguageContext";
+import { tts } from "../services/speechService";
 
 interface CareReminder {
   id: string;
@@ -61,11 +68,12 @@ interface ActivityEvent {
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { language, tr, localizePlantName, localizeDiseaseName } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [plants, setPlants] = useState<PlantProfileItem[]>([]);
   const [analyses, setAnalyses] = useState<DiagnosticResult[]>([]);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -78,6 +86,41 @@ export const Dashboard: React.FC = () => {
   const [newPlantName, setNewPlantName] = useState("");
   const [newScientificName, setNewScientificName] = useState("");
   const [newLocation, setNewLocation] = useState("Living Room Shelf");
+  const [analysisToDelete, setAnalysisToDelete] =
+    useState<DiagnosticResult | null>(null);
+  const [isDeletingAnalysis, setIsDeletingAnalysis] = useState(false);
+  const [deleteFeedback, setDeleteFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const showDeleteFeedback = (type: "success" | "error", message: string) => {
+    setDeleteFeedback({ type, message });
+    setTimeout(() => {
+      setDeleteFeedback((prev) => (prev?.message === message ? null : prev));
+    }, 3500);
+  };
+
+  const handleConfirmDeleteAnalysis = async () => {
+    if (!analysisToDelete) return;
+    setIsDeletingAnalysis(true);
+    try {
+      await plantService.deleteAnalysis(analysisToDelete.id);
+      setAnalyses((prev) =>
+        prev.filter((item) => item.id !== analysisToDelete.id)
+      );
+      setAnalysisToDelete(null);
+      showDeleteFeedback("success", tr("Analysis deleted successfully."));
+    } catch {
+      setAnalysisToDelete(null);
+      showDeleteFeedback(
+        "error",
+        tr("Unable to delete this analysis. Please try again.")
+      );
+    } finally {
+      setIsDeletingAnalysis(false);
+    }
+  };
 
   const [reminders, setReminders] = useState<CareReminder[]>([
     {
@@ -135,77 +178,78 @@ export const Dashboard: React.FC = () => {
   };
 
   const attentionPlants = useMemo(() => {
-    if (plants.length === 0) {
-      return [
-        {
-          id: "671f9b20c4d8a912e4560101",
-          plantName: "Tomato",
-          scientificName: "Solanum lycopersicum",
-          latestStatus: "Moderate Stress",
-          latestDisease: "Early Blight",
-          latestHealthScore: 82,
-          imageUrl: REAL_PLANT_IMAGES.tomato,
-          actionText: "Prune lower infected foliage and apply copper bio-fungicide",
-        },
-        {
-          id: "671f9b20c4d8a912e4560103",
-          plantName: "Chilli",
-          scientificName: "Capsicum annuum",
-          latestStatus: "Mild Stress",
-          latestDisease: "Nitrogen Deficiency",
-          latestHealthScore: 76,
-          imageUrl: REAL_PLANT_IMAGES.chilli,
-          actionText: "Check soil nitrate levels and apply organic nitrogen feed",
-        },
-      ];
-    }
-    const filtered = plants.filter(
+    return plants.filter(
       (p) =>
         (p.latestStatus && p.latestStatus !== "Healthy") ||
-        (p.latestHealthScore && p.latestHealthScore < 85) ||
+        (typeof p.latestHealthScore === "number" && p.latestHealthScore < 85) ||
         (p.latestDisease && p.latestDisease !== "Healthy")
     );
-    return filtered.length > 0 ? filtered : plants.slice(0, 2);
   }, [plants]);
 
   const healthStats = useMemo(() => {
-    const totalPlants = plants.length > 0 ? plants.length : 24;
-    const healthyCount =
-      plants.length > 0
-        ? plants.filter((p) => p.latestStatus === "Healthy").length
-        : 20;
-    const attentionCount =
-      plants.length > 0
-        ? plants.filter(
-            (p) =>
-              p.latestStatus === "Mild Stress" ||
-              p.latestStatus === "Moderate Stress"
-          ).length
-        : 3;
-    const criticalCount =
-      plants.length > 0
-        ? plants.filter(
-            (p) =>
-              p.latestStatus === "Severe Stress" ||
-              p.latestStatus === "Disease Suspected"
-          ).length
-        : 1;
+    const totalPlants = plants.length;
+    const healthyCount = plants.filter(
+      (p) =>
+        p.latestStatus === "Healthy" ||
+        (!p.latestStatus && (p.latestHealthScore ?? 90) >= 85)
+    ).length;
+    const attentionCount = plants.filter(
+      (p) =>
+        p.latestStatus === "Mild Stress" ||
+        p.latestStatus === "Moderate Stress"
+    ).length;
+    const criticalCount = plants.filter(
+      (p) =>
+        p.latestStatus === "Severe Stress" ||
+        p.latestStatus === "Disease Suspected"
+    ).length;
+    const needingAttentionTotal = attentionPlants.length;
     const avgScore =
-      plants.length > 0
+      totalPlants > 0
         ? Math.round(
-            plants.reduce((acc, p) => acc + (p.latestHealthScore || 85), 0) /
-              plants.length
+            plants.reduce((acc, p) => acc + (p.latestHealthScore ?? 90), 0) /
+              totalPlants
           )
-        : 89;
+        : 0;
 
     return {
       totalPlants,
-      healthyCount: healthyCount || Math.max(1, totalPlants - 4),
-      attentionCount: attentionCount || 3,
-      criticalCount: criticalCount || 1,
+      healthyCount,
+      attentionCount,
+      criticalCount,
+      needingAttentionTotal,
       avgScore,
     };
-  }, [plants]);
+  }, [plants, attentionPlants]);
+
+  const lastAnalysisBadge = useMemo(() => {
+    if (analyses.length === 0) {
+      return tr("Ready to scan");
+    }
+    const latestDateStr = analyses[0]?.created_at;
+    if (!latestDateStr) {
+      return tr("Last analysis: Today");
+    }
+    const latestDate = new Date(latestDateStr);
+    const now = new Date();
+    const isSameDay =
+      latestDate.getFullYear() === now.getFullYear() &&
+      latestDate.getMonth() === now.getMonth() &&
+      latestDate.getDate() === now.getDate();
+    const diffHours = (now.getTime() - latestDate.getTime()) / (1000 * 3600);
+
+    if (isSameDay || diffHours < 24) {
+      return tr("Last analysis: Today");
+    }
+    if (diffHours < 48) {
+      return tr("Last analysis: Yesterday");
+    }
+    const formatted = latestDate.toLocaleDateString(
+      language === "ta" ? "ta-IN" : "en-US",
+      { month: "short", day: "numeric" }
+    );
+    return `${tr("Last analysis:")} ${formatted}`;
+  }, [analyses, language, tr]);
 
   const recentActivities: ActivityEvent[] = useMemo(() => {
     const list: ActivityEvent[] = [];
@@ -254,28 +298,29 @@ export const Dashboard: React.FC = () => {
     return list;
   }, [analyses]);
 
+  const dailyInsightText = tr(
+    "“Your Monstera is thriving. Rotate it a quarter turn this week to encourage balanced foliar growth toward the light.”"
+  );
+
   const handleListenInsight = () => {
-    const text =
-      "Your Monstera is thriving. Rotate it a quarter turn this week to encourage balanced foliar growth toward the light.";
-    if (!("speechSynthesis" in window)) return;
     if (isPlayingAudio) {
-      window.speechSynthesis.cancel();
+      tts.stop();
       setIsPlayingAudio(false);
       return;
     }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    utterance.onend = () => setIsPlayingAudio(false);
-    utterance.onerror = () => setIsPlayingAudio(false);
     setIsPlayingAudio(true);
-    window.speechSynthesis.speak(utterance);
+    tts.speak(
+      dailyInsightText.replace(/[“”"]/g, ""),
+      () => setIsPlayingAudio(false),
+      () => setIsPlayingAudio(false),
+      language
+    );
   };
 
   const handleFileProcess = async (file: File) => {
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      setUploadError(validation.error || "Invalid image file.");
+      setUploadError(tr(validation.error || "Invalid image file."));
       return;
     }
     setUploadError(null);
@@ -285,14 +330,15 @@ export const Dashboard: React.FC = () => {
       const formData = new FormData();
       formData.append("image", optimizedFile);
       formData.append("mime_type", optimizedFile.type || "image/jpeg");
+      formData.append("language", language);
       const result = await plantService.analyzePlantImage(formData);
       if (result && result.id) {
         navigate(`/results/${result.id}`, { state: { result } });
       } else {
-        throw new Error("Analysis failed. Please try again.");
+        throw new Error(tr("Analysis failed. Please try again."));
       }
     } catch (err: unknown) {
-      setUploadError(err instanceof Error ? err.message : "Analysis failed.");
+      setUploadError(err instanceof Error ? tr(err.message) : tr("Analysis failed."));
       setIsUploading(false);
     }
   };
@@ -360,6 +406,23 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-7 pb-16 font-sans select-none max-w-[1320px] mx-auto relative">
+      {deleteFeedback && (
+        <div
+          role="status"
+          className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl text-xs font-semibold shadow-lg flex items-center gap-2 border ${
+            deleteFeedback.type === "success"
+              ? "bg-[#176B4D] text-white border-[#12563D]"
+              : "bg-white dark:bg-[#173126] text-[#C96F62] border-[#C96F62]/40"
+          }`}
+        >
+          {deleteFeedback.type === "success" ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 shrink-0" />
+          )}
+          <span>{deleteFeedback.message}</span>
+        </div>
+      )}
       {/* 1. TOP HERO CARD */}
       <section className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-white via-[#F2F8F4] to-[#DFEFE6] dark:from-[#173126] dark:via-[#142C22] dark:to-[#0F241B] border border-[#C6DDD0] dark:border-[#2A5240] p-6 sm:p-8 lg:p-9 shadow-[0_4px_16px_rgba(23,107,77,0.08)]">
         {/* Minimalist Tree-Theme Background Artwork with Forest Green Shade */}
@@ -474,18 +537,18 @@ export const Dashboard: React.FC = () => {
           <div className="lg:col-span-7 space-y-5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] text-xs font-semibold">
               <Leaf className="w-3.5 h-3.5" />
-              <span>Botanical Health & Diagnostics</span>
+              <span>{tr("Botanical Health & Diagnostics")}</span>
             </div>
 
             <div className="space-y-2.5">
               <h1 className="font-display text-[32px] sm:text-[42px] lg:text-[50px] font-extrabold text-[#163A2D] dark:text-[#F1F7F3] tracking-[-0.035em] leading-[1.08] text-balance">
-                Know Your Plant.{" "}
+                {tr("Know Your Plant.")}{" "}
                 <span className="block sm:inline text-[#176B4D] dark:text-[#8EAD9B] font-semibold">
-                  Keep It Healthy.
+                  {tr("Keep It Healthy.")}
                 </span>
               </h1>
               <p className="text-sm sm:text-base text-[#668074] dark:text-[#B0C9BA] max-w-xl leading-relaxed">
-                AI-powered plant identification, disease detection and personalized care insights.
+                {tr("AI-powered plant identification, disease detection and personalized care insights.")}
               </p>
             </div>
 
@@ -496,7 +559,7 @@ export const Dashboard: React.FC = () => {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#176B4D] hover:bg-[#12563D] transition-all cursor-pointer shadow-2xs active:scale-95"
               >
                 <Sprout className="w-4 h-4" />
-                <span>Identify Plant</span>
+                <span>{tr("Identify Plant")}</span>
               </button>
 
               <button
@@ -505,7 +568,7 @@ export const Dashboard: React.FC = () => {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] hover:bg-[#DCE7DF] border border-[#DCE7DF] dark:border-[#244737] transition-all cursor-pointer active:scale-95"
               >
                 <Stethoscope className="w-4 h-4" />
-                <span>Detect Disease</span>
+                <span>{tr("Detect Disease")}</span>
               </button>
 
               <button
@@ -514,7 +577,7 @@ export const Dashboard: React.FC = () => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-[#163A2D] dark:text-[#F1F7F3] bg-[#F6F9F5] dark:bg-[#12281E] hover:bg-[#F0F6F1] border border-[#DCE7DF] dark:border-[#244737] transition-all cursor-pointer active:scale-95"
               >
                 <Bookmark className="w-4 h-4 text-[#176B4D] dark:text-[#8EAD9B]" />
-                <span>View My Plants</span>
+                <span>{tr("View My Plants")}</span>
               </button>
             </div>
           </div>
@@ -530,19 +593,19 @@ export const Dashboard: React.FC = () => {
                 />
                 <div className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/95 dark:bg-[#173126]/95 border border-[#DCE7DF] dark:border-[#244737] text-[11px] font-semibold text-[#176B4D] dark:text-[#8EAD9B]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#2D8A62]" />
-                  <span>Healthy Specimen</span>
+                  <span>{tr("Healthy Specimen")}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-display text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                    Monstera Deliciosa
+                    {localizePlantName("Monstera Deliciosa")}
                   </p>
-                  <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">Swiss Cheese Plant</p>
+                  <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">{tr("Swiss Cheese Plant")}</p>
                 </div>
                 <span className="px-2.5 py-1 rounded-lg bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] text-xs font-bold">
-                  {healthStats.avgScore}% Health
+                  {healthStats.avgScore}% {tr("Health")}
                 </span>
               </div>
             </div>
@@ -551,98 +614,101 @@ export const Dashboard: React.FC = () => {
       </section>
 
       {/* 2. SUMMARY METRIC CARDS */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div
-          onClick={() => navigate("/plants")}
-          className="rounded-[20px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] p-5 flex flex-col justify-between shadow-[0_2px_8px_rgba(22,58,45,0.03)] hover:border-[#8EAD9B] transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#668074] dark:text-[#B0C9BA]">
-              Plant Health
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center">
-              <Activity className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="font-display text-2xl sm:text-3xl font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              {healthStats.avgScore}%
-            </p>
-            <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-1 flex items-center justify-between">
-              <span>Average collection vitality</span>
-              <ChevronRight className="w-3.5 h-3.5 text-[#176B4D]" />
-            </p>
-          </div>
-        </div>
+      <section
+        aria-label={tr("Plant Health Summary")}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
+      >
+        <DashboardStatCard
+          loading={loading}
+          title={tr("Plant Health")}
+          value={healthStats.totalPlants > 0 ? `${healthStats.avgScore}%` : "0%"}
+          description={
+            healthStats.totalPlants > 0
+              ? tr("Average health across your monitored plants")
+              : tr("Add your first plant to start monitoring")
+          }
+          badgeText={
+            healthStats.totalPlants > 0
+              ? `↑ 4.2% ${tr("this week")}`
+              : tr("No plants yet")
+          }
+          badgeVariant={healthStats.totalPlants > 0 ? "positive" : "neutral"}
+          icon={<Activity className="w-4.5 h-4.5" />}
+          onClick={() => {
+            const overviewEl = document.getElementById("plant-health-overview");
+            if (overviewEl) {
+              overviewEl.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              navigate("/plants");
+            }
+          }}
+        />
 
-        <div
+        <DashboardStatCard
+          loading={loading}
+          title={tr("Plants Monitored")}
+          value={healthStats.totalPlants}
+          description={
+            healthStats.totalPlants > 0
+              ? tr("Plants currently in your collection")
+              : tr("Add your first plant to start monitoring")
+          }
+          badgeText={
+            healthStats.totalPlants > 0
+              ? `${healthStats.healthyCount} ${tr("healthy")}`
+              : tr("No plants yet")
+          }
+          badgeVariant={healthStats.totalPlants > 0 ? "positive" : "neutral"}
+          icon={<Leaf className="w-4.5 h-4.5" />}
           onClick={() => navigate("/plants")}
-          className="rounded-[20px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] p-5 flex flex-col justify-between shadow-[0_2px_8px_rgba(22,58,45,0.03)] hover:border-[#8EAD9B] transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#668074] dark:text-[#B0C9BA]">
-              Plants Monitored
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center">
-              <Leaf className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="font-display text-2xl sm:text-3xl font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              {healthStats.totalPlants}
-            </p>
-            <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-1 flex items-center justify-between">
-              <span>{healthStats.healthyCount} thriving in collection</span>
-              <ChevronRight className="w-3.5 h-3.5 text-[#176B4D]" />
-            </p>
-          </div>
-        </div>
+        />
 
-        <div
+        <DashboardStatCard
+          loading={loading}
+          title={tr("Recent Analyses")}
+          value={analyses.length}
+          description={
+            analyses.length > 0
+              ? tr("AI plant analyses completed")
+              : tr("No analyses yet")
+          }
+          badgeText={lastAnalysisBadge}
+          badgeVariant={analyses.length > 0 ? "positive" : "neutral"}
+          icon={<ScanLine className="w-4.5 h-4.5" />}
           onClick={() => navigate("/history")}
-          className="rounded-[20px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] p-5 flex flex-col justify-between shadow-[0_2px_8px_rgba(22,58,45,0.03)] hover:border-[#8EAD9B] transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#668074] dark:text-[#B0C9BA]">
-              Recent Analyses
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center">
-              <ScanLine className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="font-display text-2xl sm:text-3xl font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              {analyses.length > 0 ? analyses.length : 18}
-            </p>
-            <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-1 flex items-center justify-between">
-              <span>AI visual diagnostics</span>
-              <ChevronRight className="w-3.5 h-3.5 text-[#176B4D]" />
-            </p>
-          </div>
-        </div>
+        />
 
-        <div
-          onClick={() => navigate("/analyze?mode=disease")}
-          className="rounded-[20px] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] p-5 flex flex-col justify-between shadow-[0_2px_8px_rgba(22,58,45,0.03)] hover:border-[#C96F62]/60 transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#668074] dark:text-[#B0C9BA]">
-              Plants Needing Attention
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#F8E9E5] dark:bg-[#2A1612] text-[#C96F62] flex items-center justify-center">
-              <Stethoscope className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="font-display text-2xl sm:text-3xl font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              {healthStats.attentionCount + healthStats.criticalCount}
-            </p>
-            <p className="text-xs text-[#668074] dark:text-[#B0C9BA] mt-1 flex items-center justify-between">
-              <span>Check symptoms & care</span>
-              <ChevronRight className="w-3.5 h-3.5 text-[#C96F62]" />
-            </p>
-          </div>
-        </div>
+        <DashboardStatCard
+          loading={loading}
+          title={tr("Plants Needing Attention")}
+          value={healthStats.needingAttentionTotal}
+          description={
+            healthStats.needingAttentionTotal > 0
+              ? tr("Plants showing symptoms or care needs")
+              : healthStats.totalPlants > 0
+                ? tr("All plants look healthy")
+                : tr("Add your first plant to start monitoring")
+          }
+          badgeText={
+            healthStats.needingAttentionTotal > 0
+              ? tr("Treatment required")
+              : tr("Optimal status")
+          }
+          badgeVariant={
+            healthStats.needingAttentionTotal > 0 ? "attention" : "positive"
+          }
+          accentVariant={
+            healthStats.needingAttentionTotal > 0 ? "attention" : "botanical"
+          }
+          icon={<AlertTriangle className="w-4.5 h-4.5" />}
+          onClick={() => {
+            if (healthStats.needingAttentionTotal > 0) {
+              navigate("/plants?filter=attention");
+            } else {
+              navigate("/plants");
+            }
+          }}
+        />
       </section>
 
       {/* 3. PLANT HEALTH SUMMARY + AI INSIGHT */}
@@ -658,10 +724,10 @@ export const Dashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                  Plant Health Summary
+                  {tr("Plant Health Summary")}
                 </h3>
                 <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                  Overall collection wellness overview
+                  {tr("Overall collection wellness overview")}
                 </p>
               </div>
             </div>
@@ -670,7 +736,7 @@ export const Dashboard: React.FC = () => {
               onClick={() => navigate("/plants")}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer"
             >
-              <span>View All ({healthStats.totalPlants})</span>
+              <span>{tr("View All")} ({healthStats.totalPlants})</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -705,7 +771,7 @@ export const Dashboard: React.FC = () => {
                     {healthStats.avgScore}%
                   </span>
                   <span className="text-[10px] text-[#668074] dark:text-[#B0C9BA] mt-1 uppercase font-semibold">
-                    Health Score
+                    {tr("Health Score")}
                   </span>
                 </div>
               </div>
@@ -716,7 +782,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#2D8A62] shrink-0" />
                   <span className="text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3]">
-                    Healthy & Thriving
+                    {tr("Healthy & Thriving")}
                   </span>
                 </div>
                 <span className="text-xs font-bold text-[#176B4D] dark:text-[#8EAD9B]">
@@ -728,7 +794,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#C98A4A] shrink-0" />
                   <span className="text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3]">
-                    Needs Care
+                    {tr("Needs Care")}
                   </span>
                 </div>
                 <span className="text-xs font-bold text-[#C98A4A]">
@@ -740,7 +806,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#C96F62] shrink-0" />
                   <span className="text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3]">
-                    Disease Detected
+                    {tr("Disease Detected")}
                   </span>
                 </div>
                 <span className="text-xs font-bold text-[#C96F62]">
@@ -763,10 +829,10 @@ export const Dashboard: React.FC = () => {
               />
               <div>
                 <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                  Daily Care Insight
+                  {tr("Daily Care Insight")}
                 </h3>
                 <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                  Monstera Deliciosa · Seasonal Tip
+                  {tr("Monstera Deliciosa · Seasonal Tip")}
                 </p>
               </div>
             </div>
@@ -777,15 +843,14 @@ export const Dashboard: React.FC = () => {
 
           <div className="p-4 rounded-2xl bg-[#F0F6F1] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] border-l-4 border-l-[#176B4D]">
             <blockquote className="font-sans text-xs sm:text-sm text-[#163A2D] dark:text-[#F1F7F3] leading-relaxed italic">
-              “Your Monstera is thriving. Rotate it a quarter turn this week to
-              encourage balanced foliar growth toward the light.”
+              {dailyInsightText}
             </blockquote>
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-[#DCE7DF] dark:border-[#244737] text-xs">
             <span className="flex items-center gap-1.5 text-[#668074] dark:text-[#B0C9BA] font-medium">
               <Sun className="w-4 h-4 text-[#C98A4A]" />
-              Bright indirect morning light
+              {tr("Bright indirect morning light")}
             </span>
             <button
               type="button"
@@ -795,12 +860,12 @@ export const Dashboard: React.FC = () => {
               {isPlayingAudio ? (
                 <>
                   <VolumeX className="w-3.5 h-3.5" />
-                  <span>Stop</span>
+                  <span>{tr("Stop")}</span>
                 </>
               ) : (
                 <>
                   <Volume2 className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
-                  <span>Listen</span>
+                  <span>{tr("Listen")}</span>
                 </>
               )}
             </button>
@@ -817,10 +882,10 @@ export const Dashboard: React.FC = () => {
             </div>
             <div>
               <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                Plants Needing Attention
+                {tr("Plants Needing Attention")}
               </h3>
               <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                Plants showing visible leaf symptoms or needing care adjustments
+                {tr("Plants showing visible leaf symptoms or needing care adjustments")}
               </p>
             </div>
           </div>
@@ -830,7 +895,7 @@ export const Dashboard: React.FC = () => {
             onClick={() => navigate("/analyze?mode=disease")}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer"
           >
-            <span>Check Plant Disease</span>
+            <span>{tr("Check Plant Disease")}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -857,12 +922,12 @@ export const Dashboard: React.FC = () => {
                   className="w-14 h-14 rounded-xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0"
                 />
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-display text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                      {plant.plantName}
+                      {localizePlantName(plant.plantName)}
                     </h4>
                     <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#F8E9E5] text-[#C96F62]">
-                      {plant.latestDisease || "Early Blight"}
+                      {localizeDiseaseName(plant.latestDisease || "Early Blight")}
                     </span>
                   </div>
                   <p className="text-xs text-[#668074] dark:text-[#B0C9BA] italic mt-0.5">
@@ -877,14 +942,14 @@ export const Dashboard: React.FC = () => {
                   onClick={() => navigate(`/analyze?mode=disease&plantId=${plant.id}`)}
                   className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#176B4D] hover:bg-[#12563D] cursor-pointer"
                 >
-                  Diagnose
+                  {tr("Diagnose")}
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate(`/plants/${plant.id}`)}
                   className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer"
                 >
-                  View
+                  {tr("View")}
                 </button>
               </div>
             </div>
@@ -903,10 +968,10 @@ export const Dashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                  Monitored Plants
+                  {tr("Monitored Plants")}
                 </h3>
                 <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                  Active specimens in your botanical collection
+                  {tr("Active specimens in your botanical collection")}
                 </p>
               </div>
             </div>
@@ -914,7 +979,7 @@ export const Dashboard: React.FC = () => {
               to="/plants"
               className="text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] hover:underline flex items-center gap-1"
             >
-              <span>All plants</span>
+              <span>{tr("All plants")}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -980,7 +1045,7 @@ export const Dashboard: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <h4 className="font-display text-xs sm:text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
-                        {plant.plantName}
+                        {localizePlantName(plant.plantName)}
                       </h4>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
@@ -996,7 +1061,7 @@ export const Dashboard: React.FC = () => {
                       {plant.scientificName}
                     </p>
                     <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate mt-0.5">
-                      {plant.location || "Home Garden"}
+                      {tr(plant.location || "Home Garden")}
                     </p>
                   </div>
                 </div>
@@ -1015,10 +1080,10 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                    Recent Analyses
+                    {tr("Recent Analyses")}
                   </h3>
                   <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                    Latest diagnostic scans & species checks
+                    {tr("Latest diagnostic scans & species checks")}
                   </p>
                 </div>
               </div>
@@ -1026,84 +1091,121 @@ export const Dashboard: React.FC = () => {
                 to="/history"
                 className="text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] hover:underline flex items-center gap-1"
               >
-                <span>History</span>
+                <span>{tr("History")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             <div className="space-y-2.5">
-              {(analyses.length > 0
-                ? analyses.slice(0, 3)
-                : [
-                    {
-                      id: "671f9b20c4d8a912e4560201",
-                      plant_name: "Tomato",
-                      scientific_name: "Solanum lycopersicum",
-                      disease_name: "Early Blight",
-                      health_score: 78,
-                      overall_status: "Moderate Stress",
-                      image_path: REAL_PLANT_IMAGES.tomato,
-                    },
-                    {
-                      id: "671f9b20c4d8a912e4560202",
-                      plant_name: "Garden Rose",
-                      scientific_name: "Rosa × hybrida",
-                      disease_name: "Healthy",
-                      health_score: 96,
-                      overall_status: "Healthy",
-                      image_path: REAL_PLANT_IMAGES.rose,
-                    },
-                    {
-                      id: "671f9b20c4d8a912e4560203",
-                      plant_name: "Chilli Pepper",
-                      scientific_name: "Capsicum annuum",
-                      disease_name: "Interveinal Chlorosis",
-                      health_score: 76,
-                      overall_status: "Mild Stress",
-                      image_path: REAL_PLANT_IMAGES.chilli,
-                    },
-                  ]
-              ).map((scan) => (
-                <div
-                  key={scan.id}
-                  onClick={() => navigate(`/results/${scan.id}`)}
-                  className="p-3 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] hover:border-[#8EAD9B] flex items-center justify-between gap-3 cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={resolveRealisticPlantImage(
-                        scan.image_path,
-                        scan.plant_name,
-                        scan.scientific_name,
-                        scan.disease_name
-                      )}
-                      alt={`${scan.plant_name} — ${scan.disease_name}`}
-                      referrerPolicy="no-referrer"
-                      onError={(e) =>
-                        handlePlantImageError(e, scan.plant_name, scan.scientific_name)
-                      }
-                      className="w-12 h-12 rounded-xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
-                        {scan.plant_name}
-                      </p>
-                      <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate">
-                        {scan.disease_name}
-                      </p>
-                    </div>
+              {analyses.length === 0 ? (
+                <div className="p-6 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] text-center space-y-2">
+                  <div className="w-9 h-9 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center mx-auto">
+                    <ScanLine className="w-4.5 h-4.5" />
                   </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 ${
-                      scan.overall_status?.toLowerCase() === "healthy"
-                        ? "bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B]"
-                        : "bg-[#F8E9E5] text-[#C96F62]"
-                    }`}
-                  >
-                    {scan.health_score}%
-                  </span>
+                  <p className="font-display text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3]">
+                    {tr("No analysis history yet")}
+                  </p>
+                  <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
+                    {tr("Upload a plant image to start your first analysis.")}
+                  </p>
                 </div>
-              ))}
+              ) : (
+                analyses.slice(0, 3).map((scan) => {
+                  const isHealthyScan =
+                    scan.disease_name === "Healthy" ||
+                    scan.overall_status?.toLowerCase() === "healthy";
+                  const scanTypeLabel = isHealthyScan
+                    ? tr("Plant Identification")
+                    : tr("Disease Detection");
+                  const scanDate = scan.created_at
+                    ? new Date(scan.created_at).toLocaleDateString(
+                        language === "ta" ? "ta-IN" : "en-US",
+                        { month: "short", day: "numeric" }
+                      )
+                    : tr("Recent scan");
+
+                  return (
+                    <div
+                      key={scan.id}
+                      onClick={() =>
+                        navigate(`/results/${scan.id}`, {
+                          state: { result: scan },
+                        })
+                      }
+                      className="p-3 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] hover:border-[#8EAD9B] flex items-center justify-between gap-2.5 cursor-pointer transition-all"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={resolveRealisticPlantImage(
+                            scan.image_path,
+                            scan.plant_name,
+                            scan.scientific_name,
+                            scan.disease_name
+                          )}
+                          alt={`${scan.plant_name} — ${scan.disease_name}`}
+                          referrerPolicy="no-referrer"
+                          onError={(e) =>
+                            handlePlantImageError(
+                              e,
+                              scan.plant_name,
+                              scan.scientific_name
+                            )
+                          }
+                          className="w-12 h-12 rounded-xl object-cover border border-[#DCE7DF] dark:border-[#244737] shrink-0"
+                        />
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-xs font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
+                            {localizePlantName(scan.plant_name)}
+                          </p>
+                          <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate">
+                            {localizeDiseaseName(scan.disease_name)} ·{" "}
+                            <span
+                              className={
+                                isHealthyScan
+                                  ? "text-[#176B4D] dark:text-[#8EAD9B] font-semibold"
+                                  : "text-[#C96F62] font-semibold"
+                              }
+                            >
+                              {scan.health_score}%
+                            </span>
+                          </p>
+                          <p className="text-[10px] text-[#668074]/85 dark:text-[#B0C9BA]/80 truncate">
+                            {scanTypeLabel} · {scanDate}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/results/${scan.id}`, {
+                              state: { result: scan },
+                            });
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-white dark:bg-[#173126] hover:bg-[#E4F0E7] dark:hover:bg-[#1D3B2D] border border-[#DCE7DF] dark:border-[#244737] transition-colors cursor-pointer"
+                        >
+                          {tr("View Details")}
+                        </button>
+
+                        <button
+                          type="button"
+                          title={tr("Delete analysis")}
+                          aria-label={tr("Delete analysis")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAnalysisToDelete(scan);
+                          }}
+                          className="p-1.5 rounded-lg text-[#668074] dark:text-[#B0C9BA] hover:text-[#C96F62] dark:hover:text-[#E08A7E] hover:bg-[#F8E9E5]/60 dark:hover:bg-[#2A1612]/60 border border-transparent hover:border-[#C96F62]/25 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -1119,10 +1221,10 @@ export const Dashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                  Care Recommendations & Tasks
+                  {tr("Care Recommendations & Tasks")}
                 </h3>
                 <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                  Personalized care schedule for your plants
+                  {tr("Personalized care schedule for your plants")}
                 </p>
               </div>
             </div>
@@ -1130,7 +1232,7 @@ export const Dashboard: React.FC = () => {
               to="/care"
               className="text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] hover:underline flex items-center gap-1"
             >
-              View all care plans <ArrowRight className="w-3.5 h-3.5" />
+              {tr("View all care plans")} <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -1166,15 +1268,15 @@ export const Dashboard: React.FC = () => {
                           : "text-[#163A2D] dark:text-[#F1F7F3]"
                       }`}
                     >
-                      {rem.plantName}
+                      {localizePlantName(rem.plantName)}
                     </span>
                     <span className="text-xs text-[#668074] dark:text-[#B0C9BA] block truncate">
-                      {rem.task}
+                      {tr(rem.task)}
                     </span>
                   </div>
                 </div>
                 <span className="text-xs font-medium text-[#668074] dark:text-[#B0C9BA] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] px-2.5 py-1 rounded-lg shrink-0">
-                  {rem.dueDate}
+                  {tr(rem.dueDate)}
                 </span>
               </div>
             ))}
@@ -1272,10 +1374,10 @@ export const Dashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                  Quick Plant Analysis
+                  {tr("Quick Plant Analysis")}
                 </h3>
                 <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                  Upload a photo to identify or check health
+                  {tr("Upload a photo to identify or check health")}
                 </p>
               </div>
             </div>
@@ -1311,7 +1413,7 @@ export const Dashboard: React.FC = () => {
               {isUploading ? (
                 <div className="py-5 flex flex-col items-center gap-2 text-xs">
                   <Loader2 className="w-8 h-8 animate-spin text-[#176B4D]" />
-                  <span className="font-semibold text-sm">Analyzing your plant...</span>
+                  <span className="font-semibold text-sm">{tr("Analyzing your plant...")}</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center w-full">
@@ -1319,7 +1421,7 @@ export const Dashboard: React.FC = () => {
                     <Upload className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] mb-3">
-                    Drag and drop a plant photo or browse
+                    {tr("Drag and drop a plant photo or browse")}
                   </p>
                   <div className="flex items-center gap-2.5">
                     <button
@@ -1328,7 +1430,7 @@ export const Dashboard: React.FC = () => {
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs text-white bg-[#176B4D] hover:bg-[#12563D] cursor-pointer"
                     >
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Photo</span>
+                      <span>{tr("Upload Photo")}</span>
                     </button>
                     <button
                       type="button"
@@ -1336,7 +1438,7 @@ export const Dashboard: React.FC = () => {
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs text-[#163A2D] dark:text-[#F1F7F3] bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer"
                     >
                       <Camera className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
-                      <span>Camera</span>
+                      <span>{tr("Camera")}</span>
                     </button>
                   </div>
                 </div>
@@ -1354,7 +1456,7 @@ export const Dashboard: React.FC = () => {
           <div className="bg-white dark:bg-[#173126] rounded-[24px] max-w-lg w-full p-6 space-y-4 shadow-xl border border-[#DCE7DF] dark:border-[#244737]">
             <div className="flex items-center justify-between pb-3 border-b border-[#DCE7DF] dark:border-[#244737]">
               <h3 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                Camera Capture
+                {tr("Camera Capture")}
               </h3>
               <button type="button" onClick={stopCamera} className="p-1 text-[#668074]">
                 <X className="w-5 h-5" />
@@ -1369,19 +1471,26 @@ export const Dashboard: React.FC = () => {
                 onClick={stopCamera}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-[#668074]"
               >
-                Cancel
+                {tr("Cancel")}
               </button>
               <button
                 type="button"
                 onClick={capturePhoto}
                 className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#176B4D] cursor-pointer"
               >
-                Capture & Analyze
+                {tr("Capture & Analyze")}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <DeleteAnalysisModal
+        analysis={analysisToDelete}
+        isDeleting={isDeletingAnalysis}
+        onCancel={() => setAnalysisToDelete(null)}
+        onConfirm={handleConfirmDeleteAnalysis}
+      />
     </div>
   );
 };

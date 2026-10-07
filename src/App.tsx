@@ -10,6 +10,7 @@ import { History } from "./pages/History";
 import { MyPlants } from "./pages/MyPlants";
 import { CareRecommendations } from "./pages/CareRecommendations";
 import { PlantProfile } from "./pages/PlantProfile";
+import { PlantAssistant } from "./pages/PlantAssistant";
 import { Settings } from "./pages/Settings";
 import { Leaf, Menu } from "lucide-react";
 
@@ -69,6 +70,7 @@ const AppContent: React.FC = () => {
           <Route path="/plants/:id" element={<PlantProfile />} />
           <Route path="/care" element={<CareRecommendations />} />
           <Route path="/recommendations" element={<CareRecommendations />} />
+          <Route path="/assistant" element={<PlantAssistant />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

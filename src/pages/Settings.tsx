@@ -7,11 +7,10 @@ import {
   Monitor,
   Globe,
   Bell,
-  Volume2,
-  Trash2,
   Download,
   CheckCircle2,
   Play,
+  AlertCircle,
 } from "lucide-react";
 import { useLanguage, SupportedLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
@@ -24,8 +23,8 @@ import {
 import { AudioSpeechButton } from "../components/AudioSpeechButton";
 
 export const Settings: React.FC = () => {
-  const { language, setLanguage } = useLanguage();
-  const { theme, setTheme, density, setDensity } = useTheme();
+  const { language, setLanguage, t, tr } = useLanguage();
+  const { theme, setTheme, density } = useTheme();
 
   const [profileName, setProfileName] = useState(
     () => localStorage.getItem("plantcare_user_name") || "Emily Morgan"
@@ -44,10 +43,24 @@ export const Settings: React.FC = () => {
     getStoredSpeechSettings()
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [voiceWarning, setVoiceWarning] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setVoiceWarning(null);
+    const unsubscribe = tts.onVoicesChanged((voices) => {
+      if (language === "ta" && voices.length > 0) {
+        const tamilVoice = tts.findTamilVoice(voices);
+        if (tamilVoice) {
+          setVoiceWarning(null);
+        }
+      }
+    });
+    return unsubscribe;
+  }, [language]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -57,19 +70,40 @@ export const Settings: React.FC = () => {
     localStorage.setItem("plantcare_user_name", editNameInput);
     localStorage.setItem("plantcare_user_email", editEmailInput);
     setIsEditingProfile(false);
-    showToast("Profile updated.");
+    showToast(tr("Profile updated."));
   };
 
   const handleUpdateSpeechSettings = (updates: Partial<SpeechSettings>) => {
     const updated = { ...speechSettings, ...updates };
     setSpeechSettings(updated);
     saveStoredSpeechSettings(updated);
-    showToast("Voice settings saved.");
+    showToast(tr("Voice settings saved."));
+  };
+
+  const handleLanguageChange = (newLang: SupportedLanguage) => {
+    setVoiceWarning(null);
+    setLanguage(newLang);
   };
 
   const handleTestSpeech = () => {
-    tts.speak("PlantCare AI voice test. Your plant care assistant is ready.", {
+    setVoiceWarning(null);
+    const sampleText =
+      language === "ta"
+        ? "வணக்கம்! இது PlantCare AI குரல் சோதனை."
+        : tts.getSampleText(language);
+
+    tts.speak(sampleText, {
+      lang: language,
       rate: speechSettings.speechRate,
+      onVoiceFallbackWarning: () => {
+        if (language === "ta") {
+          const fallback = tts.findFallbackVoice();
+          const fallbackLabel = fallback ? ` (${fallback.name})` : "";
+          setVoiceWarning(
+            `தகவல்: இந்த சாதனத்தில் பிரத்யேக தமிழ் (ta-IN) குரல் இல்லை; மாற்றுக் குரல்${fallbackLabel} பயன்படுத்தப்படுகிறது.`
+          );
+        }
+      },
     });
   };
 
@@ -88,14 +122,19 @@ export const Settings: React.FC = () => {
     a.download = `plantcare_settings_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast("Preferences exported.");
+    showToast(tr("Preferences exported."));
   };
+
+  const settingsListenText =
+    language === "ta"
+      ? "அமைப்புகள் மற்றும் விருப்பத்தேர்வுகள். உங்கள் சுயவிவரம், தோற்றம், மொழி மற்றும் குரல் வாசிப்பு வேகத்தை இங்கே நிர்வகிக்கலாம்."
+      : "Settings and preferences. Customize your profile, appearance theme, language, and voice reading.";
 
   return (
     <div className="space-y-7 pb-16 max-w-4xl mx-auto font-sans antialiased text-[#163A2D] dark:text-[#F1F7F3]">
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 p-3.5 rounded-xl bg-[#176B4D] text-white text-xs font-semibold shadow-lg flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" />
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -107,38 +146,39 @@ export const Settings: React.FC = () => {
               PlantCare AI
             </Link>
             <span>/</span>
-            <span className="font-semibold text-[#163A2D] dark:text-[#F1F7F3]">Settings</span>
+            <span className="font-semibold text-[#163A2D] dark:text-[#F1F7F3]">
+              {t.navSettings}
+            </span>
           </nav>
 
           <div>
             <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#163A2D] dark:text-[#F1F7F3] tracking-tight">
-              Settings & Preferences
+              {tr("Settings & Preferences")}
             </h1>
             <p className="text-sm text-[#668074] dark:text-[#B0C9BA] mt-1">
-              Manage your account profile, light or dark theme, language, voice reading, and notifications.
+              {tr(
+                "Manage your account profile, light or dark theme, language, voice reading, and notifications."
+              )}
             </p>
           </div>
         </div>
 
-        <AudioSpeechButton
-          text="Settings and preferences. Customize your profile, appearance theme, language, and voice reading."
-          label="Listen"
-        />
+        <AudioSpeechButton text={settingsListenText} label={t.listen} />
       </div>
 
       {/* 1. PROFILE & ACCOUNT */}
       <section className="bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-[22px] p-6 space-y-5 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
-        <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center shrink-0">
               <User className="w-4 h-4" />
             </div>
             <div>
               <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                Profile & Account
+                {tr("Profile & Account")}
               </h2>
               <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                Your personal plant care profile
+                {tr("Your personal plant care profile")}
               </p>
             </div>
           </div>
@@ -149,7 +189,7 @@ export const Settings: React.FC = () => {
               onClick={() => setIsEditingProfile(true)}
               className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] cursor-pointer"
             >
-              Edit Profile
+              {tr("Edit Profile")}
             </button>
           )}
         </div>
@@ -159,7 +199,7 @@ export const Settings: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[#668074] dark:text-[#B0C9BA] mb-1 font-semibold">
-                  Full Name
+                  {tr("Full Name")}
                 </label>
                 <input
                   type="text"
@@ -170,7 +210,7 @@ export const Settings: React.FC = () => {
               </div>
               <div>
                 <label className="block text-[#668074] dark:text-[#B0C9BA] mb-1 font-semibold">
-                  Email Address
+                  {tr("Email Address")}
                 </label>
                 <input
                   type="email"
@@ -186,26 +226,26 @@ export const Settings: React.FC = () => {
                 onClick={() => setIsEditingProfile(false)}
                 className="px-4 py-2 rounded-xl text-[#668074] cursor-pointer"
               >
-                Cancel
+                {tr("Cancel")}
               </button>
               <button
                 type="submit"
                 className="px-4 py-2 rounded-xl font-semibold text-white bg-[#176B4D] cursor-pointer"
               >
-                Save Changes
+                {tr("Save Changes")}
               </button>
             </div>
           </form>
         ) : (
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-bold text-sm flex items-center justify-center border border-[#DCE7DF] dark:border-[#244737]">
+            <div className="w-12 h-12 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-bold text-sm flex items-center justify-center border border-[#DCE7DF] dark:border-[#244737] shrink-0">
               EM
             </div>
-            <div>
-              <p className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
+            <div className="min-w-0">
+              <p className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
                 {profileName}
               </p>
-              <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">{profileEmail}</p>
+              <p className="text-xs text-[#668074] dark:text-[#B0C9BA] truncate">{profileEmail}</p>
             </div>
           </div>
         )}
@@ -214,15 +254,15 @@ export const Settings: React.FC = () => {
       {/* 2. APPEARANCE & THEME */}
       <section className="bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-[22px] p-6 space-y-5 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
         <div className="flex items-center gap-2.5 pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
-          <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center shrink-0">
             <Sun className="w-4 h-4" />
           </div>
           <div>
             <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              Appearance & Theme
+              {tr("Appearance & Theme")}
             </h2>
             <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-              Choose Light Mode or Dark Mode for PlantCare AI
+              {tr("Choose Light Mode or Dark Mode for PlantCare AI")}
             </p>
           </div>
         </div>
@@ -237,13 +277,13 @@ export const Settings: React.FC = () => {
                 : "border-[#DCE7DF] dark:border-[#244737] bg-[#F6F9F5] dark:bg-[#12281E]"
             }`}
           >
-            <Sun className="w-5 h-5 text-[#C98A4A]" />
-            <div>
+            <Sun className="w-5 h-5 text-[#C98A4A] shrink-0" />
+            <div className="min-w-0">
               <span className="text-xs font-bold block text-[#163A2D] dark:text-[#F1F7F3]">
-                Light Mode
+                {tr("Light Mode")}
               </span>
               <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                Fresh botanical daylight
+                {tr("Fresh botanical daylight")}
               </span>
             </div>
           </button>
@@ -257,13 +297,13 @@ export const Settings: React.FC = () => {
                 : "border-[#DCE7DF] dark:border-[#244737] bg-[#F6F9F5] dark:bg-[#12281E]"
             }`}
           >
-            <Moon className="w-5 h-5 text-[#176B4D] dark:text-[#8EAD9B]" />
-            <div>
+            <Moon className="w-5 h-5 text-[#176B4D] dark:text-[#8EAD9B] shrink-0" />
+            <div className="min-w-0">
               <span className="text-xs font-bold block text-[#163A2D] dark:text-[#F1F7F3]">
-                Dark Mode
+                {tr("Dark Mode")}
               </span>
               <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                Deep forest botanical
+                {tr("Deep forest botanical")}
               </span>
             </div>
           </button>
@@ -277,13 +317,13 @@ export const Settings: React.FC = () => {
                 : "border-[#DCE7DF] dark:border-[#244737] bg-[#F6F9F5] dark:bg-[#12281E]"
             }`}
           >
-            <Monitor className="w-5 h-5 text-[#668074] dark:text-[#B0C9BA]" />
-            <div>
+            <Monitor className="w-5 h-5 text-[#668074] dark:text-[#B0C9BA] shrink-0" />
+            <div className="min-w-0">
               <span className="text-xs font-bold block text-[#163A2D] dark:text-[#F1F7F3]">
-                System Default
+                {tr("System Default")}
               </span>
               <span className="text-[11px] text-[#668074] dark:text-[#B0C9BA]">
-                Follow device setting
+                {tr("Follow device setting")}
               </span>
             </div>
           </button>
@@ -292,17 +332,17 @@ export const Settings: React.FC = () => {
 
       {/* 3. LANGUAGE & VOICE */}
       <section className="bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-[22px] p-6 space-y-5 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
-        <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center shrink-0">
               <Globe className="w-4 h-4" />
             </div>
             <div>
               <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-                Language & Voice Reading
+                {tr("Language & Voice Reading")}
               </h2>
               <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-                Select preferred language and audio narration speed
+                {tr("Select preferred language and audio narration speed")}
               </p>
             </div>
           </div>
@@ -310,21 +350,21 @@ export const Settings: React.FC = () => {
           <button
             type="button"
             onClick={handleTestSpeech}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] bg-[#E4F0E7] dark:bg-[#1D3B2D] cursor-pointer whitespace-nowrap"
           >
-            <Play className="w-3.5 h-3.5" />
-            <span>Test Voice</span>
+            <Play className="w-3.5 h-3.5 shrink-0" />
+            <span>{t.testVoice}</span>
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
             <label className="block text-[#668074] dark:text-[#B0C9BA] mb-1.5 font-semibold">
-              Display & Diagnosis Language
+              {tr("Display & Diagnosis Language")}
             </label>
             <select
               value={language}
-              onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+              onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3]"
             >
               <option value="en">English (EN)</option>
@@ -333,12 +373,13 @@ export const Settings: React.FC = () => {
               <option value="fr">Français (FR)</option>
               <option value="de">Deutsch (DE)</option>
               <option value="zh">中文 (ZH)</option>
+              <option value="ta">தமிழ் (TA)</option>
             </select>
           </div>
 
           <div>
             <label className="block text-[#668074] dark:text-[#B0C9BA] mb-1.5 font-semibold">
-              Voice Reading Speed ({speechSettings.speechRate}x)
+              {tr("Voice Reading Speed")} ({speechSettings.speechRate}x)
             </label>
             <input
               type="range"
@@ -353,56 +394,63 @@ export const Settings: React.FC = () => {
             />
           </div>
         </div>
+
+        {voiceWarning && (
+          <div className="p-3 rounded-xl bg-[#F0F6F1] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] text-xs text-[#176B4D] dark:text-[#8EAD9B] flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{voiceWarning}</span>
+          </div>
+        )}
       </section>
 
       {/* 4. NOTIFICATIONS & DATA */}
       <section className="bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-[22px] p-6 space-y-5 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
         <div className="flex items-center gap-2.5 pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
-          <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center shrink-0">
             <Bell className="w-4 h-4" />
           </div>
           <div>
             <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
-              Notifications & Data Export
+              {tr("Notifications & Data Export")}
             </h2>
             <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
-              Manage care reminders and export your plant records
+              {tr("Manage care reminders and export your plant records")}
             </p>
           </div>
         </div>
 
         <div className="space-y-3 text-xs">
-          <label className="flex items-center justify-between p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer">
+          <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer">
             <div>
               <span className="font-bold text-[#163A2D] dark:text-[#F1F7F3] block">
-                Disease Detection Alerts
+                {tr("Disease Detection Alerts")}
               </span>
               <span className="text-[#668074] dark:text-[#B0C9BA]">
-                Notify when a plant requires immediate treatment
+                {tr("Notify when a plant requires immediate treatment")}
               </span>
             </div>
             <input
               type="checkbox"
               checked={notifyDisease}
               onChange={(e) => setNotifyDisease(e.target.checked)}
-              className="w-4 h-4 accent-[#176B4D]"
+              className="w-4 h-4 accent-[#176B4D] shrink-0"
             />
           </label>
 
-          <label className="flex items-center justify-between p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer">
+          <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer">
             <div>
               <span className="font-bold text-[#163A2D] dark:text-[#F1F7F3] block">
-                Watering & Seasonal Care Reminders
+                {tr("Watering & Seasonal Care Reminders")}
               </span>
               <span className="text-[#668074] dark:text-[#B0C9BA]">
-                Receive scheduled care reminders for your collection
+                {tr("Receive scheduled care reminders for your collection")}
               </span>
             </div>
             <input
               type="checkbox"
               checked={notifyCare}
               onChange={(e) => setNotifyCare(e.target.checked)}
-              className="w-4 h-4 accent-[#176B4D]"
+              className="w-4 h-4 accent-[#176B4D] shrink-0"
             />
           </label>
         </div>
@@ -414,7 +462,7 @@ export const Settings: React.FC = () => {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
-            <span>Export Preferences</span>
+            <span>{tr("Export Preferences")}</span>
           </button>
         </div>
       </section>

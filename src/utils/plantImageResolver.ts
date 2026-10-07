@@ -54,39 +54,58 @@ export function resolveRealisticPlantImage(
     return REAL_PLANT_IMAGES.peaceLily;
   }
 
-  // Match by plant name, scientific name, or condition
+  // Match by plant name, scientific name, or condition (including Tamil common names)
   const searchKey = `${plantName || ""} ${scientificName || ""} ${diseaseName || ""}`.toLowerCase();
 
-  if (searchKey.includes("tomato") || searchKey.includes("solanum") || searchKey.includes("blight")) {
+  if (
+    searchKey.includes("tomato") ||
+    searchKey.includes("தக்காளி") ||
+    searchKey.includes("solanum") ||
+    searchKey.includes("blight")
+  ) {
     return REAL_PLANT_IMAGES.tomato;
   }
-  if (searchKey.includes("rose") || searchKey.includes("rosa")) {
+  if (searchKey.includes("rose") || searchKey.includes("ரோஜா") || searchKey.includes("rosa")) {
     return REAL_PLANT_IMAGES.rose;
   }
   if (
     searchKey.includes("chilli") ||
     searchKey.includes("chili") ||
     searchKey.includes("pepper") ||
+    searchKey.includes("மிளகாய்") ||
     searchKey.includes("capsicum") ||
     searchKey.includes("chlorosis")
   ) {
     return REAL_PLANT_IMAGES.chilli;
   }
-  if (searchKey.includes("fiddle") || searchKey.includes("ficus") || searchKey.includes("fig")) {
+  if (
+    searchKey.includes("fiddle") ||
+    searchKey.includes("ficus") ||
+    searchKey.includes("fig") ||
+    searchKey.includes("அத்தி")
+  ) {
     return REAL_PLANT_IMAGES.fiddleLeafFig;
   }
   if (
     searchKey.includes("lily") ||
+    searchKey.includes("லில்லி") ||
     searchKey.includes("spathiphyllum") ||
     searchKey.includes("orchid") ||
     searchKey.includes("jasmine")
   ) {
     return REAL_PLANT_IMAGES.peaceLily;
   }
-  if (searchKey.includes("monstera") && (searchKey.includes("spot") || searchKey.includes("stress"))) {
+  if (
+    (searchKey.includes("monstera") || searchKey.includes("மான்ஸ்டெரா")) &&
+    (searchKey.includes("spot") || searchKey.includes("stress") || searchKey.includes("புள்ளி"))
+  ) {
     return REAL_PLANT_IMAGES.monsteraSpot;
   }
-  if (searchKey.includes("monstera") || searchKey.includes("deliciosa")) {
+  if (
+    searchKey.includes("monstera") ||
+    searchKey.includes("மான்ஸ்டெரா") ||
+    searchKey.includes("deliciosa")
+  ) {
     return REAL_PLANT_IMAGES.monstera;
   }
 
