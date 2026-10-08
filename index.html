@@ -30,6 +30,21 @@
   </head>
   <body class="bg-[#F6F9F5] dark:bg-[#0F231B] text-[#163A2D] dark:text-[#F1F7F3] antialiased">
     <div id="root"></div>
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.message && (e.message.includes('WebSocket') || e.message.includes('ws://') || e.message.includes('wss://'))) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        var msg = String(e.reason && (e.reason.message || e.reason) || '');
+        if (msg.includes('WebSocket')) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
