@@ -23,6 +23,7 @@ import {
 import { useLanguage, SupportedLanguage } from "../context/LanguageContext";
 import { AudioSpeechButton } from "../components/AudioSpeechButton";
 import { useSpeechRecognition } from "../hooks/useSpeech";
+import { tts } from "../services/speechService";
 import {
   validateImageFile,
   optimizeImageForAnalysis,
@@ -395,6 +396,7 @@ export const PlantAssistant: React.FC = () => {
 
   const handleToggleVoice = () => {
     setErrorMessage(null);
+    tts.stop();
     if (!isListening) {
       baseTextBeforeSpeechRef.current = inputText;
     }
@@ -486,6 +488,7 @@ export const PlantAssistant: React.FC = () => {
     if (isListening) {
       stopListening();
     }
+    tts.stop();
     clearVoiceError();
 
     const trimmed = questionText.trim();
@@ -574,6 +577,7 @@ export const PlantAssistant: React.FC = () => {
   };
 
   const handleConfirmClear = () => {
+    tts.stop();
     setMessages([]);
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(CHAT_STORAGE_KEY);
@@ -665,7 +669,10 @@ export const PlantAssistant: React.FC = () => {
               <select
                 id="assistant-plant-select"
                 value={selectedPlantId}
-                onChange={(e) => setSelectedPlantId(e.target.value)}
+                onChange={(e) => {
+                  tts.stop();
+                  setSelectedPlantId(e.target.value);
+                }}
                 className="w-full appearance-none rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] px-3.5 py-2.5 pr-9 text-xs sm:text-sm font-semibold text-[#163A2D] dark:text-[#F1F7F3] focus:outline-none focus:border-[#176B4D] cursor-pointer"
               >
                 <option value="">🌱 {ui.generalCareOption}</option>

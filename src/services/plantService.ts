@@ -37,6 +37,7 @@ export interface PlantProfileItem {
   id: string;
   _id?: string;
   plantName: string;
+  nickname?: string;
   scientificName: string;
   category?: string;
   location?: string;
@@ -51,8 +52,61 @@ export interface PlantProfileItem {
   latestStatus?: string;
   latestDisease?: string;
   notes?: string;
+  lastWateredAt?: string;
+  lastCareAction?: string;
+  lastCareActionAt?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type PlantMoodKey =
+  | "happy"
+  | "thirsty"
+  | "needs_light"
+  | "recovering"
+  | "needs_attention"
+  | "wants_checkup";
+
+export type PlantPersonalityMode = "friendly" | "calm" | "playful" | "expert";
+
+export interface PlantTalkDailyMessage {
+  plantId: string;
+  plantName: string;
+  nickname?: string;
+  mood: PlantMoodKey;
+  conditionSummary?: string;
+  message: string;
+  why: string;
+  needs: string[];
+  todayActions?: string[];
+  watchFor: string;
+  forecast?: string;
+  healthTrend?: "improving" | "stable" | "needs_attention" | "recovering";
+  latestAnalysis?: DiagnosticResult | null;
+  matchingAnalyses?: DiagnosticResult[];
+  careEvents?: CareCheckInRecord[];
+  matchingRecs?: any[];
+  updatedAt: string;
+}
+
+export interface PlantTalkChatResponse {
+  id: string;
+  reply: string;
+  plantId: string;
+  plantName: string;
+  nickname?: string;
+  mood: PlantMoodKey;
+  imageUrl?: string;
+  createdAt: string;
+}
+
+export interface CareCheckInRecord {
+  id: string;
+  plantId: string;
+  plantName: string;
+  actionType: "watered" | "moved_light" | "fertilized" | "trimmed" | "uploaded_photo";
+  note?: string;
+  timestamp: string;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -105,6 +159,20 @@ export const plantService = {
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error("Failed to create plant");
+    return res.json();
+  },
+
+  async updatePlant(
+    id: string,
+    data: Partial<PlantProfileItem>
+  ): Promise<PlantProfileItem> {
+    const res = await fetch(`/api/plants/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update plant profile");
     return res.json();
   },
 
@@ -318,5 +386,154 @@ export const plantService = {
       }
       return retryData;
     }
+  },
+
+  async getPlantTalkDailyMessage(params: {
+    plantId: string;
+    personality?: PlantPersonalityMode;
+    language?: string;
+  }): Promise<PlantTalkDailyMessage> {
+    const res = await fetch("/api/plant-talk", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "daily",
+        plantId: params.plantId,
+        personality: params.personality || "friendly",
+        language: params.language || "en",
+      }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.message) {
+      throw new Error(
+        formatApiErrorMessage(res.status, data?.message || data?.error)
+      );
+    }
+    return data;
+  },
+
+  async askPlantTalk(params: {
+    plantId: string;
+    message: string;
+    personality?: PlantPersonalityMode;
+    language?: string;
+    history?: AssistantHistoryTurn[];
+    imageFile?: File | null;
+  }): Promise<PlantTalkChatResponse> {
+    const {
+      plantId,
+      message,
+      personality = "friendly",
+      language = "en",
+      history = [],
+      imageFile,
+    } = params;
+
+    try {
+      const formData = new FormData();
+      formData.append("mode", "chat");
+      formData.append("plantId", plantId);
+      formData.append("message", message);
+      formData.append("personality", personality);
+      formData.append("language", language);
+      if (history.length > 0) {
+        formData.append("history", JSON.stringify(history.slice(-6)));
+      }
+      if (imageFile) {
+        formData.append("image", imageFile);
+        formData.append("mime_type", imageFile.type || "image/jpeg");
+      }
+
+      const res = await fetch("/api/plant-talk", {
+        method: "POST",
+        credentials: "same-origin",
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.reply) {
+        throw new Error(
+          formatApiErrorMessage(res.status, data?.message || data?.error)
+        );
+      }
+      return data;
+    } catch (firstErr: unknown) {
+      const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+      const isNetworkFetchError =
+        msg.toLowerCase().includes("failed to fetch") ||
+        msg.toLowerCase().includes("networkerror") ||
+        msg.toLowerCase().includes("load failed");
+
+      if (!isNetworkFetchError) {
+        throw firstErr;
+      }
+
+      let imageBase64: string | undefined;
+      let mimeType = "image/jpeg";
+      if (imageFile) {
+        imageBase64 = await fileToBase64(imageFile);
+        mimeType = imageFile.type || mimeType;
+      }
+
+      const retryRes = await fetch("/api/plant-talk", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "chat",
+          plantId,
+          message,
+          personality,
+          language,
+          history: history.slice(-6),
+          imageBase64,
+          mime_type: mimeType,
+        }),
+      });
+
+      const retryData = await retryRes.json().catch(() => null);
+      if (!retryRes.ok || !retryData || !retryData.reply) {
+        throw new Error(
+          formatApiErrorMessage(
+            retryRes.status,
+            retryData?.message || retryData?.error
+          )
+        );
+      }
+      return retryData;
+    }
+  },
+
+  async getCareEvents(plantId?: string): Promise<CareCheckInRecord[]> {
+    const query = plantId ? `?plantId=${encodeURIComponent(plantId)}` : "";
+    const res = await fetch(`/api/plant-talk/care-events${query}`, {
+      credentials: "same-origin",
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  async logCareCheckIn(params: {
+    plantId: string;
+    actionType: CareCheckInRecord["actionType"];
+    note?: string;
+    language?: string;
+  }): Promise<{
+    event: CareCheckInRecord;
+    plant: PlantProfileItem;
+    plantReply: string;
+  }> {
+    const res = await fetch("/api/plant-talk/care-checkin", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data) {
+      throw new Error(data?.error || "Failed to log care check-in");
+    }
+    return data;
   },
 };

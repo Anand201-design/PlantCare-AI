@@ -873,6 +873,55 @@ export const Dashboard: React.FC = () => {
         </div>
       </section>
 
+      {/* TODAY'S PLANT TALK PREVIEW CARD */}
+      <section className="bg-white dark:bg-[#173126] rounded-[22px] border border-[#DCE7DF] dark:border-[#244737] p-5 sm:p-6 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#176B4D] dark:text-[#8EAD9B]">
+              <span>🌿 {tr("Plant Talk")}</span>
+              <span className="text-[#668074] dark:text-[#9AB8A8] font-normal">
+                · {tr("AI Interpretation")}
+              </span>
+            </div>
+            <h3 className="font-display text-base sm:text-lg font-bold text-[#163A2D] dark:text-[#F1F7F3]">
+              {plants[0]?.nickname
+                ? `${plants[0].nickname} (${localizePlantName(plants[0].plantName)})`
+                : localizePlantName(plants[0]?.plantName || "Monstera Deliciosa")}{" "}
+              {tr("Says:")}
+            </h3>
+            <p className="text-sm text-[#163A2D] dark:text-[#D5E5DC] leading-relaxed italic">
+              "{tr("Hi! Please check my soil moisture today and keep me in bright indirect light.")}"
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() =>
+                navigate(plants[0]?.id ? `/plant-talk?plantId=${plants[0].id}` : "/plant-talk")
+              }
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#176B4D] hover:bg-[#13583F] text-white text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <span>{tr("Open Plant Talk")}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                tts.speak(
+                  tr("Hi! Please check my soil moisture today and keep me in bright indirect light."),
+                  { lang: language }
+                )
+              }
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] hover:bg-[#E4F0E7] dark:hover:bg-[#1D3B2D] text-[#163A2D] dark:text-[#F1F7F3] border border-[#DCE7DF] dark:border-[#244737] text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
+              <span>{tr("Listen")}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* 4. PLANTS NEEDING ATTENTION */}
       <section className="bg-white dark:bg-[#173126] rounded-[22px] border border-[#DCE7DF] dark:border-[#244737] p-6 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#DCE7DF] dark:border-[#244737]">

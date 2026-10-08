@@ -12,6 +12,7 @@ import {
   X,
   ArrowRight,
   Stethoscope,
+  MessageCircle,
 } from "lucide-react";
 import { plantService, PlantProfileItem } from "../services/plantService";
 import {
@@ -271,7 +272,9 @@ export const MyPlants: React.FC = () => {
                         onClick={() => navigate(`/plants/${plant.id}`)}
                         className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] hover:text-[#176B4D] cursor-pointer"
                       >
-                        {localizePlantName(plant.plantName)}
+                        {plant.nickname
+                          ? `${plant.nickname} (${localizePlantName(plant.plantName)})`
+                          : localizePlantName(plant.plantName)}
                       </h3>
                       <p className="text-xs italic text-[#668074] dark:text-[#B0C9BA]">
                         {plant.scientificName || "Botanical specimen"}
@@ -291,15 +294,25 @@ export const MyPlants: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="px-5 py-3.5 bg-[#F6F9F5] dark:bg-[#12281E] border-t border-[#DCE7DF] dark:border-[#244737] flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/analyze?mode=disease&plantId=${plant.id}`)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] hover:underline cursor-pointer"
-                  >
-                    <Stethoscope className="w-3.5 h-3.5" />
-                    <span>{tr("Diagnose")}</span>
-                  </button>
+                <div className="px-5 py-3.5 bg-[#F6F9F5] dark:bg-[#12281E] border-t border-[#DCE7DF] dark:border-[#244737] flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/plant-talk?plantId=${plant.id}`)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#E4F0E7] dark:bg-[#1D3B2D] hover:bg-[#DCE7DF] text-xs font-semibold text-[#176B4D] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737] transition-colors cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>🌿 {tr("Talk to Plant")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/analyze?mode=disease&plantId=${plant.id}`)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#668074] dark:text-[#B0C9BA] hover:text-[#176B4D] dark:hover:text-[#8EAD9B] cursor-pointer"
+                    >
+                      <Stethoscope className="w-3.5 h-3.5" />
+                      <span>{tr("Diagnose")}</span>
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => navigate(`/plants/${plant.id}`)}

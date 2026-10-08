@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import { LanguageProvider } from "./context/LanguageContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { Sidebar } from "./components/Sidebar";
@@ -10,12 +10,19 @@ import { History } from "./pages/History";
 import { MyPlants } from "./pages/MyPlants";
 import { CareRecommendations } from "./pages/CareRecommendations";
 import { PlantProfile } from "./pages/PlantProfile";
+import { PlantTalk } from "./pages/PlantTalk";
 import { PlantAssistant } from "./pages/PlantAssistant";
 import { Settings } from "./pages/Settings";
+import { tts } from "./services/speechService";
 import { Leaf, Menu } from "lucide-react";
 
 const AppContent: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    tts.stop();
+  }, [location.pathname, location.search]);
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#F6F9F5] dark:bg-[#0F231B] text-[#163A2D] dark:text-[#F1F7F3] font-sans antialiased transition-colors duration-200">
@@ -70,6 +77,7 @@ const AppContent: React.FC = () => {
           <Route path="/plants/:id" element={<PlantProfile />} />
           <Route path="/care" element={<CareRecommendations />} />
           <Route path="/recommendations" element={<CareRecommendations />} />
+          <Route path="/plant-talk" element={<PlantTalk />} />
           <Route path="/assistant" element={<PlantAssistant />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />

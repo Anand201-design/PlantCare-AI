@@ -18,6 +18,8 @@ import {
   getStoredSpeechSettings,
   saveStoredSpeechSettings,
   SpeechSettings,
+  VoiceTonePreset,
+  VOICE_TONE_PRESETS,
   tts,
 } from "../services/speechService";
 import { AudioSpeechButton } from "../components/AudioSpeechButton";
@@ -42,12 +44,17 @@ export const Settings: React.FC = () => {
   const [speechSettings, setSpeechSettings] = useState<SpeechSettings>(() =>
     getStoredSpeechSettings()
   );
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(() =>
+    tts.getRankedVoicesForLanguage(language)
+  );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [voiceWarning, setVoiceWarning] = useState<string | null>(null);
 
   React.useEffect(() => {
     setVoiceWarning(null);
+    setAvailableVoices(tts.getRankedVoicesForLanguage(language));
     const unsubscribe = tts.onVoicesChanged((voices) => {
+      setAvailableVoices(tts.getRankedVoicesForLanguage(language, voices));
       if (language === "ta" && voices.length > 0) {
         const tamilVoice = tts.findTamilVoice(voices);
         if (tamilVoice) {
@@ -80,6 +87,16 @@ export const Settings: React.FC = () => {
     showToast(tr("Voice settings saved."));
   };
 
+  const handleTonePresetChange = (tone: VoiceTonePreset) => {
+    const preset = VOICE_TONE_PRESETS[tone];
+    handleUpdateSpeechSettings({
+      voiceTone: tone,
+      speechRate: preset.rate,
+      speechPitch: preset.pitch,
+      speechVolume: preset.volume,
+    });
+  };
+
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setVoiceWarning(null);
     setLanguage(newLang);
@@ -87,14 +104,13 @@ export const Settings: React.FC = () => {
 
   const handleTestSpeech = () => {
     setVoiceWarning(null);
-    const sampleText =
-      language === "ta"
-        ? "வணக்கம்! இது PlantCare AI குரல் சோதனை."
-        : tts.getSampleText(language);
+    const sampleText = tts.getSampleText(language);
 
     tts.speak(sampleText, {
       lang: language,
       rate: speechSettings.speechRate,
+      pitch: speechSettings.speechPitch,
+      volume: speechSettings.speechVolume,
       onVoiceFallbackWarning: () => {
         if (language === "ta") {
           const fallback = tts.findFallbackVoice();
@@ -379,13 +395,51 @@ export const Settings: React.FC = () => {
 
           <div>
             <label className="block text-[#668074] dark:text-[#B0C9BA] mb-1.5 font-semibold">
+              {tr("Voice Tone & Clarity")}
+            </label>
+            <select
+              value={speechSettings.voiceTone || "soft-clear"}
+              onChange={(e) => handleTonePresetChange(e.target.value as VoiceTonePreset)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3]"
+            >
+              <option value="soft-clear">{tr("Soft & Clear (Recommended)")}</option>
+              <option value="warm-calm">{tr("Warm & Soothing")}</option>
+              <option value="natural-balanced">{tr("Natural & Balanced")}</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[#668074] dark:text-[#B0C9BA] mb-1.5 font-semibold">
+              {tr("Voice Profile")}
+            </label>
+            <select
+              value={speechSettings.preferredVoiceURI || ""}
+              onChange={(e) =>
+                handleUpdateSpeechSettings({ preferredVoiceURI: e.target.value })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] text-[#163A2D] dark:text-[#F1F7F3]"
+            >
+              <option value="">
+                {tr("Auto — Softest & Clearest Voice")}
+                {availableVoices[0] ? ` (${availableVoices[0].name})` : ""}
+              </option>
+              {availableVoices.map((voice) => (
+                <option key={voice.voiceURI} value={voice.voiceURI}>
+                  {voice.name} ({voice.lang})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[#668074] dark:text-[#B0C9BA] mb-1.5 font-semibold">
               {tr("Voice Reading Speed")} ({speechSettings.speechRate}x)
             </label>
             <input
               type="range"
               min="0.7"
-              max="1.4"
-              step="0.1"
+              max="1.3"
+              step="0.02"
               value={speechSettings.speechRate}
               onChange={(e) =>
                 handleUpdateSpeechSettings({ speechRate: parseFloat(e.target.value) })

@@ -62,6 +62,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
       icon: Sparkles,
     },
     {
+      to: "/plant-talk",
+      label: t.navPlantTalk,
+      icon: Sprout,
+    },
+    {
       to: "/assistant",
       label: t.navAssistant,
       icon: Sprout,
@@ -379,6 +384,53 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
             <path
               d="M19.5 6.8L20.1 8.6L21.9 9.2L20.1 9.8L19.5 11.6L18.9 9.8L17.1 9.2L18.9 8.6L19.5 6.8Z"
               fill="currentColor"
+            />
+          </svg>
+        );
+
+      case "/plant-talk":
+        return (
+          <svg
+            viewBox="0 0 28 28"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className={baseClass}
+          >
+            <rect
+              x="1"
+              y="1"
+              width="26"
+              height="26"
+              rx="8"
+              className={
+                active
+                  ? "fill-[#176B4D]/14 dark:fill-[#8EAD9B]/20 stroke-[#176B4D]/30 dark:stroke-[#8EAD9B]/35"
+                  : "fill-[#F0F6F1] dark:fill-[#1D3B2D]/70 stroke-[#DCE7DF] dark:stroke-[#244737]"
+              }
+              strokeWidth="1"
+            />
+            {/* Friendly leaf with speech wave */}
+            <path
+              d="M8.5 19.5C8 13.8 11.5 8.5 18.5 8C19 15 14 19.5 8.5 19.5Z"
+              fill="currentColor"
+              fillOpacity={active ? "0.28" : "0.16"}
+              stroke="currentColor"
+              strokeWidth="1.45"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M8.5 19.5L13.5 14.5"
+              stroke="currentColor"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+            />
+            {/* Soft voice arcs */}
+            <path
+              d="M19.2 13.5C20.2 14.3 20.2 15.8 19.2 16.6M21.2 12C22.8 13.5 22.8 16.6 21.2 18.1"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
             />
           </svg>
         );
