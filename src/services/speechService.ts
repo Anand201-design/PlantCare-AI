@@ -19,23 +19,35 @@ export const DEFAULT_SPEECH_PITCH = 1.0;
 export const DEFAULT_SPEECH_VOLUME = 0.8;
 
 export const LANGUAGE_TO_BCP47: Record<string, string> = {
-  en: "en-US",
-  es: "es-ES",
+  en: "en-IN",
+  ta: "ta-IN",
   hi: "hi-IN",
+  te: "te-IN",
+  ml: "ml-IN",
+  kn: "kn-IN",
+  bn: "bn-IN",
+  mr: "mr-IN",
+  gu: "gu-IN",
+  es: "es-ES",
   fr: "fr-FR",
   de: "de-DE",
   zh: "zh-CN",
-  ta: "ta-IN",
 };
 
 export const SAMPLE_VOICE_TEXT: Record<string, string> = {
   en: "Your plant may need a little more water. Please check the top layer of the soil before watering, and keep it in gentle indirect light.",
-  es: "Es posible que tu planta necesite un poco más de agua. Por favor, revisa la capa superior de la tierra antes de regar.",
+  ta: "உங்கள் செடிக்குச் சற்று தண்ணீர் தேவைப்படலாம். தண்ணீர் ஊற்றும் முன் மேல் மண்ணின் ஈரப்பதத்தை அன்புடன் சரிபார்க்கவும்.",
   hi: "आपके पौधे को थोड़े और पानी की आवश्यकता हो सकती है। कृपया पानी देने से पहले मिट्टी की ऊपरी परत की जांच करें।",
+  te: "మీ మొక్కకు కొద్దిగా నీరు అవసరం కావచ్చు. నీరు పోసే ముందు మట్టిని ఒకసారి పరిశీలించండి.",
+  ml: "നിങ്ങളുടെ ചെടിക്ക് കുറച്ച് വെള്ളം ആവശ്യമായി വന്നേക്കാം. നനയ്ക്കുന്നതിന് മുമ്പ് മണ്ണ് പരിശോധിക്കുക.",
+  kn: "ನಿಮ್ಮ ಗಿಡಕ್ಕೆ ಸ್ವಲ್ಪ ನೀರು ಬೇಕಾಗಬಹುದು. ನೀರುಣಿಸುವ ಮೊದಲು ಮಣ್ಣಿನ ಮೇಲ್ಪದರವನ್ನು ಪರೀಕ್ಷಿಸಿ.",
+  bn: "আপনার গাছে কিছুটা জলের প্রয়োজন হতে পারে। জল দেওয়ার আগে মাটির ওপরের স্তর পরীক্ষা করুন।",
+  mr: "तुमच्या झाडाला थोडे पाणी हवे असू शकते. पाणी देण्यापूर्वी मातीचा वरचा थर तपासा.",
+  gu: "તમારા છોડને થોડું પાણી જોઈ શકે છે. પાણી આપતા પહેલા માટીનું ઉપરનું સ્તર તપાસો.",
+  es: "Es posible que tu planta necesite un poco más de agua. Por favor, revisa la capa superior de la tierra antes de regar.",
   fr: "Votre plante a peut-être besoin d'un peu plus d'eau. Veuillez vérifier la couche supérieure du terreau avant d'arroser.",
   de: "Ihre Pflanze benötigt möglicherweise etwas mehr Wasser. Bitte prüfen Sie vor dem Gießen die oberste Erdschicht.",
   zh: "您的植物可能需要一点水分。请在浇水前先轻轻检查表层土壤是否干燥。",
-  ta: "உங்கள் செடிக்குச் சற்று தண்ணீர் தேவைப்படலாம். தண்ணீர் ஊற்றும் முன் மேல் மண்ணின் ஈரப்பதத்தை அன்புடன் சரிபார்க்கவும்.",
 };
 
 /**
@@ -865,6 +877,29 @@ class TextToSpeechManager {
    * 2. Soft US/UK English voice ("en-US" / "en-GB")
    * 3. Default browser voice
    */
+  hasNativeVoiceForLanguage(langCode: string): boolean {
+    const voices = this.getVoices();
+    if (!voices.length) return false;
+    const targetBcp47 = getSpeechLocale(langCode).toLowerCase();
+    const baseLang = targetBcp47.split("-")[0];
+    return voices.some((v) => {
+      const vLang = v.lang.replace("_", "-").toLowerCase();
+      const nameLower = `${v.name} ${v.voiceURI}`.toLowerCase();
+      if (vLang === targetBcp47 || vLang.startsWith(`${baseLang}-`) || vLang === baseLang) {
+        return true;
+      }
+      if (baseLang === "ta" && (nameLower.includes("tamil") || v.name.includes("தமிழ்"))) return true;
+      if (baseLang === "hi" && (nameLower.includes("hindi") || v.name.includes("हिन्दी"))) return true;
+      if (baseLang === "te" && (nameLower.includes("telugu") || v.name.includes("తెలుగు"))) return true;
+      if (baseLang === "ml" && (nameLower.includes("malayalam") || v.name.includes("മലയാളം"))) return true;
+      if (baseLang === "kn" && (nameLower.includes("kannada") || v.name.includes("ಕನ್ನಡ"))) return true;
+      if (baseLang === "bn" && (nameLower.includes("bengali") || v.name.includes("বাংলা"))) return true;
+      if (baseLang === "mr" && (nameLower.includes("marathi") || v.name.includes("मराठी"))) return true;
+      if (baseLang === "gu" && (nameLower.includes("gujarati") || v.name.includes("ગુજરાતી"))) return true;
+      return false;
+    });
+  }
+
   findFallbackVoice(voicesList?: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
     const voices = voicesList ?? this.getVoices();
     if (!voices.length) return null;

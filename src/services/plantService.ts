@@ -138,54 +138,148 @@ function formatApiErrorMessage(status: number, rawMessage?: string): string {
   return clean || "Failed to analyze plant image. Please try again.";
 }
 
+const CACHE_KEYS = {
+  PLANTS: "plantcare_cached_plants",
+  HISTORY: "plantcare_cached_history",
+};
+
+function readCached<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeCached<T>(key: string, data: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {
+    // Ignore storage quota exceeded
+  }
+}
+
 export const plantService = {
   async getPlants(): Promise<PlantProfileItem[]> {
-    const res = await fetch("/api/plants", { credentials: "same-origin" });
-    if (!res.ok) throw new Error("Failed to fetch plants");
-    return res.json();
+    try {
+      const res = await fetch("/api/plants", { credentials: "same-origin" });
+      if (!res.ok) throw new Error("Failed to fetch plants");
+      const data: PlantProfileItem[] = await res.json();
+      writeCached(CACHE_KEYS.PLANTS, data);
+      return data;
+    } catch (err) {
+      const cached = readCached<PlantProfileItem[]>(CACHE_KEYS.PLANTS, []);
+      if (cached.length > 0) {
+        return cached;
+      }
+      throw err;
+    }
   },
 
   async getPlantById(id: string): Promise<PlantProfileItem> {
-    const res = await fetch(`/api/plants/${id}`, { credentials: "same-origin" });
-    if (!res.ok) throw new Error("Failed to fetch plant profile");
-    return res.json();
+    try {
+      const res = await fetch(`/api/plants/${id}`, { credentials: "same-origin" });
+      if (!res.ok) throw new Error("Failed to fetch plant profile");
+      return await res.json();
+    } catch (err) {
+      const cached = readCached<PlantProfileItem[]>(CACHE_KEYS.PLANTS, []);
+      const found = cached.find((p) => p.id === id || p._id === id);
+      if (found) return found;
+      throw err;
+    }
   },
 
   async createPlant(data: Partial<PlantProfileItem>): Promise<PlantProfileItem> {
-    const res = await fetch("/api/plants", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Failed to create plant");
-    return res.json();
+    try {
+      const res = await fetch("/api/plants", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to create plant");
+      const created: PlantProfileItem = await res.json();
+      const current = readCached<PlantProfileItem[]>(CACHE_KEYS.PLANTS, []);
+      writeCached(CACHE_KEYS.PLANTS, [created, ...current]);
+      return created;
+    } catch (err) {
+      // Offline fallback: save locally
+      const fallbackItem: PlantProfileItem = {
+        id: `offline_${Date.now()}`,
+        plantName: data.plantName || "My Plant",
+        scientificName: data.scientificName || "Specimen",
+        imageUrl: data.imageUrl,
+        category: data.category || "Houseplant",
+        location: data.location || "Indoor",
+        latestHealthScore: data.latestHealthScore || 90,
+        latestStatus: data.latestStatus || "Healthy",
+        latestDisease: data.latestDisease || "Healthy",
+        ...data,
+      };
+      const current = readCached<PlantProfileItem[]>(CACHE_KEYS.PLANTS, []);
+      writeCached(CACHE_KEYS.PLANTS, [fallbackItem, ...current]);
+      return fallbackItem;
+    }
   },
 
   async updatePlant(
     id: string,
     data: Partial<PlantProfileItem>
   ): Promise<PlantProfileItem> {
-    const res = await fetch(`/api/plants/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Failed to update plant profile");
-    return res.json();
+    try {
+      const res = await fetch(`/api/plants/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update plant profile");
+      const updated: PlantProfileItem = await res.json();
+      const current = readCached<PlantProfileItem[]>(CACHE_KEYS.PLANTS, []);
+      const index = current.findIndex((p) => p.id === id || p._id === id);
+      if (index !== -1) {
+        current[index] = { ...current[index], ...updated };
+        writeCached(CACHE_KEYS.PLANTS, current);
+      }
+      return updated;
+    } catch (err) {
+      const current = readCached<PlantProfileItem[]>(CACHE_KEYS.PLANTS, []);
+      const index = current.findIndex((p) => p.id === id || p._id === id);
+      if (index !== -1) {
+        current[index] = { ...current[index], ...data };
+        writeCached(CACHE_KEYS.PLANTS, current);
+        return current[index];
+      }
+      throw err;
+    }
   },
 
   async getAnalysisHistory(): Promise<DiagnosticResult[]> {
-    const res = await fetch("/api/history", { credentials: "same-origin" });
-    if (!res.ok) throw new Error("Failed to fetch analysis history");
-    return res.json();
+    try {
+      const res = await fetch("/api/history", { credentials: "same-origin" });
+      if (!res.ok) throw new Error("Failed to fetch analysis history");
+      const data: DiagnosticResult[] = await res.json();
+      writeCached(CACHE_KEYS.HISTORY, data);
+      return data;
+    } catch (err) {
+      const cached = readCached<DiagnosticResult[]>(CACHE_KEYS.HISTORY, []);
+      if (cached.length > 0) return cached;
+      throw err;
+    }
   },
 
   async getAnalysisById(id: string): Promise<DiagnosticResult> {
-    const res = await fetch(`/api/results/${id}`, { credentials: "same-origin" });
-    if (!res.ok) throw new Error("Failed to fetch analysis report");
-    return res.json();
+    try {
+      const res = await fetch(`/api/results/${id}`, { credentials: "same-origin" });
+      if (!res.ok) throw new Error("Failed to fetch analysis report");
+      return await res.json();
+    } catch (err) {
+      const cached = readCached<DiagnosticResult[]>(CACHE_KEYS.HISTORY, []);
+      const found = cached.find((r) => r.id === id || r._id === id);
+      if (found) return found;
+      throw err;
+    }
   },
 
   async deleteAnalysis(id: string): Promise<{ deleted: boolean; id: string }> {
@@ -199,7 +293,13 @@ export const plantService = {
         errData?.error || "Unable to delete this analysis. Please try again."
       );
     }
-    return res.json();
+    const result = await res.json();
+    const current = readCached<DiagnosticResult[]>(CACHE_KEYS.HISTORY, []);
+    writeCached(
+      CACHE_KEYS.HISTORY,
+      current.filter((item) => item.id !== id && item._id !== id)
+    );
+    return result;
   },
 
   async analyzePlantImage(formData: FormData): Promise<DiagnosticResult> {

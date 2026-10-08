@@ -30,7 +30,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   return (
     <button
       type="button"
-      onClick={toggleListening}
+      onClick={() => toggleListening()}
       title={titleText}
       className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
         isListening

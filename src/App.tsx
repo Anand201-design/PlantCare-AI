@@ -2,7 +2,11 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import { LanguageProvider } from "./context/LanguageContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Sidebar } from "./components/Sidebar";
+import { OfflineBanner } from "./components/OfflineBanner";
+import { PWAInstallBanner } from "./components/PWAInstallBanner";
+import { AuthModal } from "./components/AuthModal";
 import { Dashboard } from "./pages/Dashboard";
 import { AnalyzePlant } from "./pages/AnalyzePlant";
 import { PlantResult } from "./pages/PlantResult";
@@ -14,11 +18,12 @@ import { PlantTalk } from "./pages/PlantTalk";
 import { PlantAssistant } from "./pages/PlantAssistant";
 import { Settings } from "./pages/Settings";
 import { tts } from "./services/speechService";
-import { Leaf, Menu } from "lucide-react";
+import { Leaf, Menu, User, LogIn } from "lucide-react";
 
 const AppContent: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
 
   useEffect(() => {
     tts.stop();
@@ -37,14 +42,40 @@ const AppContent: React.FC = () => {
           </span>
         </Link>
 
-        <button
-          type="button"
-          onClick={() => setMobileSidebarOpen(true)}
-          className="p-2 rounded-xl text-[#163A2D] dark:text-[#B0C9BA] hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] transition-colors cursor-pointer"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-2">
+          {isAuthenticated && user ? (
+            <Link
+              to="/settings"
+              className="w-8 h-8 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737] flex items-center justify-center text-xs font-bold"
+              aria-label="User profile settings"
+            >
+              {user.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "PL"}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
+              className="p-1.5 rounded-xl text-[#176B4D] dark:text-[#8EAD9B] hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] transition-colors"
+              aria-label="Sign in"
+            >
+              <LogIn className="w-5 h-5" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="p-2 rounded-xl text-[#163A2D] dark:text-[#B0C9BA] hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] transition-colors cursor-pointer"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
       </header>
 
       {/* Desktop Fixed Sidebar (visible on lg+) */}
@@ -66,23 +97,34 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 px-5 sm:px-7 lg:px-10 py-6 sm:py-8 lg:py-9 max-w-[1440px] mx-auto w-full">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/analyze" element={<AnalyzePlant />} />
-          <Route path="/results/:id" element={<PlantResult />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/plants" element={<MyPlants />} />
-          <Route path="/plants/:id" element={<PlantProfile />} />
-          <Route path="/care" element={<CareRecommendations />} />
-          <Route path="/recommendations" element={<CareRecommendations />} />
-          <Route path="/plant-talk" element={<PlantTalk />} />
-          <Route path="/assistant" element={<PlantAssistant />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Network Offline Notice */}
+        <OfflineBanner />
+
+        <main className="flex-1 min-w-0 px-4 sm:px-7 lg:px-10 py-5 sm:py-7 lg:py-8 max-w-[1440px] mx-auto w-full">
+          {/* PWA Install Notification */}
+          <PWAInstallBanner />
+
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analyze" element={<AnalyzePlant />} />
+            <Route path="/results/:id" element={<PlantResult />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/plants" element={<MyPlants />} />
+            <Route path="/plants/:id" element={<PlantProfile />} />
+            <Route path="/care" element={<CareRecommendations />} />
+            <Route path="/recommendations" element={<CareRecommendations />} />
+            <Route path="/plant-talk" element={<PlantTalk />} />
+            <Route path="/assistant" element={<PlantAssistant />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
+
+      {/* Auth Modal */}
+      <AuthModal />
     </div>
   );
 };
@@ -91,9 +133,11 @@ export function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

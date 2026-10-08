@@ -13,9 +13,15 @@ import {
   ChevronDown,
   Globe,
   X,
+  Download,
+  LogIn,
+  LogOut,
+  User,
 } from "lucide-react";
 import { useLanguage, SupportedLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import { usePWAInstall } from "../hooks/usePWAInstall";
 
 interface SidebarProps {
   onCloseMobile?: () => void;
@@ -28,6 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
   const navigate = useNavigate();
   const { language, setLanguage, t, tr } = useLanguage();
   const { setTheme, resolvedTheme } = useTheme();
+  const { user, isAuthenticated, logout, openAuthModal } = useAuth();
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const navItems = [
@@ -548,10 +556,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
   };
 
   return (
-    <aside className="w-[244px] shrink-0 flex flex-col justify-between bg-white dark:bg-[#173126] border-r border-[#DCE7DF] dark:border-[#244737] min-h-screen p-5 select-none font-sans relative overflow-hidden transition-colors duration-200">
-      {/* Botanical Tree Branch & Leaf Artwork */}
+    <aside className="w-[244px] shrink-0 flex flex-col justify-between bg-gradient-to-b from-[#FBFCFB] via-[#F3F8F5] to-[#EAF2ED] dark:from-[#152E23] dark:via-[#11251C] dark:to-[#0D1D16] border-r border-[#D7E4DA]/90 dark:border-[#224535] shadow-[inset_-1px_0_0_rgba(255,255,255,0.8),2px_0_12px_rgba(22,58,45,0.03)] dark:shadow-[inset_-1px_0_0_rgba(255,255,255,0.04),2px_0_16px_rgba(0,0,0,0.3)] min-h-screen p-5 select-none font-sans relative overflow-hidden transition-colors duration-300">
+      {/* Ambient Lighting & Atmosphere */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden select-none z-0" aria-hidden="true">
+        {/* Soft top-right emerald glow */}
+        <div className="absolute -top-16 -right-16 w-52 h-52 rounded-full bg-gradient-to-br from-[#176B4D]/10 via-[#8EAD9B]/10 to-transparent dark:from-[#8EAD9B]/16 dark:via-[#176B4D]/10 dark:to-transparent blur-2xl" />
+        {/* Subtle mid-left botanical aura */}
+        <div className="absolute top-[38%] -left-20 w-48 h-64 rounded-full bg-gradient-to-r from-[#176B4D]/6 to-transparent dark:from-[#248260]/12 dark:to-transparent blur-3xl" />
+        {/* Bottom sage glow */}
+        <div className="absolute -bottom-14 -right-12 w-56 h-56 rounded-full bg-gradient-to-tl from-[#8EAD9B]/14 via-[#176B4D]/8 to-transparent dark:from-[#1D3B2D]/45 dark:to-transparent blur-2xl" />
+        {/* Delicate right edge shimmer */}
+        <div className="absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent via-[#8EAD9B]/30 to-transparent dark:via-[#8EAD9B]/20" />
+      </div>
+
+      {/* Botanical Tree Branch, Vine & Leaf Artwork */}
       <div
-        className="pointer-events-none absolute inset-0 overflow-hidden select-none z-0 opacity-75 dark:opacity-35"
+        className="pointer-events-none absolute inset-0 overflow-hidden select-none z-0 opacity-85 dark:opacity-45"
         aria-hidden="true"
       >
         <svg
@@ -561,167 +581,243 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
           className="absolute inset-0 w-full h-full"
           preserveAspectRatio="xMidYMid slice"
         >
-          {/* Upper-right overhanging tree branch */}
+          <defs>
+            <linearGradient id="sbBranchGrad" x1="0" y1="900" x2="244" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#176B4D" stopOpacity="0.32" />
+              <stop offset="45%" stopColor="#248260" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#8EAD9B" stopOpacity="0.38" />
+            </linearGradient>
+            <linearGradient id="sbLeafGradLush" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#D9EEDB" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#BFE2C6" stopOpacity="0.7" />
+            </linearGradient>
+            <linearGradient id="sbLeafGradMint" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#EBF5EE" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#D3E7D8" stopOpacity="0.75" />
+            </linearGradient>
+            <linearGradient id="sbLeafGradEmerald" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#176B4D" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#8EAD9B" stopOpacity="0.18" />
+            </linearGradient>
+            <radialGradient id="sbDewGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#8EAD9B" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#8EAD9B" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Micro-contour organic botanical rings in background */}
+          <circle cx="230" cy="110" r="75" stroke="#8EAD9B" strokeWidth="0.8" strokeDasharray="3 4" opacity="0.22" />
+          <circle cx="230" cy="110" r="110" stroke="#8EAD9B" strokeWidth="0.6" strokeDasharray="2 6" opacity="0.15" />
+          <circle cx="15" cy="560" r="85" stroke="#176B4D" strokeWidth="0.8" strokeDasharray="3 5" opacity="0.14" />
+          <circle cx="210" cy="720" r="65" stroke="#8EAD9B" strokeWidth="0.7" strokeDasharray="2 5" opacity="0.18" />
+
+          {/* Upper-right cascading overhanging botanical canopy */}
           <path
-            d="M250 18 C215 32, 185 52, 152 86 C135 104, 118 115, 98 124"
-            stroke="#8EAD9B"
-            strokeWidth="2.2"
+            d="M256 12 C218 28, 184 52, 148 88 C128 108, 108 120, 84 130"
+            stroke="url(#sbBranchGrad)"
+            strokeWidth="2.5"
             strokeLinecap="round"
-            opacity="0.45"
           />
           <path
-            d="M192 50 C180 72, 174 95, 158 116"
+            d="M194 48 C180 72, 172 98, 154 120 C146 128, 136 134, 126 138"
             stroke="#8EAD9B"
-            strokeWidth="1.5"
+            strokeWidth="1.6"
             strokeLinecap="round"
-            opacity="0.4"
+            opacity="0.5"
           />
           <path
-            d="M152 86 C132 82, 114 74, 96 62"
+            d="M148 88 C126 84, 106 74, 88 60 C80 54, 72 46, 68 38"
             stroke="#8EAD9B"
             strokeWidth="1.3"
             strokeLinecap="round"
-            opacity="0.35"
+            opacity="0.45"
           />
-          {/* Leaves on upper-right branch */}
+          {/* Delicate spiral tendril off top branch */}
           <path
-            d="M152 86 C162 68, 180 62, 190 70 C178 82, 164 88, 152 86 Z"
-            fill="#DCE7DF"
-          />
-          <path
-            d="M124 108 C130 92, 145 88, 154 96 C143 106, 132 110, 124 108 Z"
-            fill="#E4F0E7"
-          />
-          <path
-            d="M98 124 C84 118, 76 125, 82 136 C92 134, 96 129, 98 124 Z"
-            fill="#8EAD9B"
-            fillOpacity="0.25"
-          />
-          <path
-            d="M158 116 C168 112, 178 118, 174 128 C164 126, 160 121, 158 116 Z"
-            fill="#DCE7DF"
+            d="M84 130 C72 136, 66 146, 72 152 C78 156, 84 152, 82 144"
+            stroke="#8EAD9B"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            opacity="0.5"
           />
 
-          {/* Main ascending botanical tree branch along lower-mid sidebar */}
+          {/* Canopy foliage leaves with delicate venation */}
+          {/* Leaf 1 */}
           <path
-            d="M-8 740 C28 690, 56 640, 88 580 C118 524, 156 482, 206 435 C222 420, 236 404, 248 390"
-            stroke="#176B4D"
-            strokeWidth="2.8"
-            strokeLinecap="round"
-            opacity="0.22"
+            d="M148 88 C160 66, 182 60, 194 70 C180 84, 164 90, 148 88 Z"
+            fill="url(#sbLeafGradLush)"
+            stroke="#8EAD9B"
+            strokeWidth="0.8"
+            strokeOpacity="0.4"
           />
-          {/* Secondary fork reaching left-upward */}
+          <path d="M152 86 C168 76, 184 72, 192 70" stroke="#176B4D" strokeWidth="0.7" strokeDasharray="1.5 2" opacity="0.3" />
+
+          {/* Leaf 2 */}
           <path
-            d="M88 580 C74 535, 52 496, 26 458 C16 443, 8 428, 2 412"
-            stroke="#176B4D"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.18"
+            d="M120 110 C128 92, 146 86, 156 96 C143 108, 130 112, 120 110 Z"
+            fill="url(#sbLeafGradMint)"
+            stroke="#8EAD9B"
+            strokeWidth="0.7"
+            strokeOpacity="0.4"
           />
-          {/* Tertiary fine twig branching right */}
+          {/* Leaf 3 */}
           <path
-            d="M134 514 C162 518, 188 512, 218 496"
+            d="M84 130 C68 122, 60 132, 68 144 C80 142, 84 136, 84 130 Z"
+            fill="url(#sbLeafGradEmerald)"
+          />
+          {/* Leaf 4 */}
+          <path
+            d="M154 120 C166 114, 178 122, 172 134 C160 131, 156 126, 154 120 Z"
+            fill="url(#sbLeafGradMint)"
+          />
+          {/* Leaf 5 */}
+          <path
+            d="M106 72 C116 54, 134 52, 140 64 C128 72, 116 74, 106 72 Z"
+            fill="url(#sbLeafGradLush)"
+            opacity="0.8"
+          />
+
+          {/* Main ascending tree trunk & botanical bough along sidebar */}
+          <path
+            d="M-10 760 C30 706, 60 652, 92 588 C124 526, 162 480, 214 430 C230 414, 246 396, 258 380"
+            stroke="url(#sbBranchGrad)"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+          />
+          {/* Natural bark contour line on main trunk */}
+          <path
+            d="M-6 754 C32 702, 62 650, 93 586 C115 540, 142 504, 180 464"
+            stroke="#176B4D"
+            strokeWidth="0.9"
+            strokeDasharray="4 6"
+            opacity="0.25"
+          />
+
+          {/* Secondary left-climbing bough */}
+          <path
+            d="M92 588 C76 538, 52 496, 24 454 C14 438, 6 422, -2 404"
+            stroke="url(#sbBranchGrad)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          />
+          {/* Tertiary branch arching right */}
+          <path
+            d="M138 518 C168 522, 196 514, 228 496"
+            stroke="url(#sbBranchGrad)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          {/* Slender upper branch */}
+          <path
+            d="M180 466 C172 432, 156 406, 136 384 C126 372, 114 362, 100 354"
             stroke="#176B4D"
             strokeWidth="1.5"
             strokeLinecap="round"
-            opacity="0.18"
+            opacity="0.35"
           />
-          {/* Fine upper twig on main branch */}
+          {/* Lower flourishing branch toward bottom right */}
           <path
-            d="M174 466 C166 436, 152 412, 134 392"
-            stroke="#176B4D"
-            strokeWidth="1.4"
+            d="M46 662 C86 654, 124 666, 166 690 C192 704, 220 712, 248 708"
+            stroke="url(#sbBranchGrad)"
+            strokeWidth="2.1"
             strokeLinecap="round"
-            opacity="0.16"
           />
-          {/* Lower offshoot branch towards bottom right */}
+          {/* Tendril curl near lower branch */}
           <path
-            d="M44 658 C82 652, 118 662, 158 684 C182 697, 208 704, 234 702"
-            stroke="#176B4D"
-            strokeWidth="1.8"
+            d="M220 712 C236 718, 244 732, 238 740 C230 746, 222 738, 224 728"
+            stroke="#8EAD9B"
+            strokeWidth="1.2"
             strokeLinecap="round"
-            opacity="0.16"
+            opacity="0.4"
           />
 
-          {/* Botanical leaves & buds along the middle-lower tree branches */}
-          {/* Leaf cluster 1 - left fork */}
+          {/* Mid & Lower Leaf Clusters with multi-tonal botanical beauty */}
+          {/* Cluster A: Left bough */}
           <path
-            d="M58 512 C42 498, 44 476, 60 470 C68 486, 66 502, 58 512 Z"
-            fill="#E4F0E7"
+            d="M56 508 C38 492, 40 468, 58 462 C68 478, 66 498, 56 508 Z"
+            fill="url(#sbLeafGradMint)"
+            stroke="#8EAD9B"
+            strokeWidth="0.8"
+            strokeOpacity="0.4"
+          />
+          <path d="M46 478 C54 486, 60 496, 56 508" stroke="#176B4D" strokeWidth="0.7" strokeDasharray="1.5 2" opacity="0.3" />
+          <path
+            d="M68 534 C88 518, 102 524, 98 542 C84 546, 74 542, 68 534 Z"
+            fill="url(#sbLeafGradLush)"
+          />
+          <path
+            d="M24 454 C8 446, 6 426, 20 418 C32 432, 30 444, 24 454 Z"
+            fill="url(#sbLeafGradEmerald)"
+          />
+
+          {/* Cluster B: Main central bough */}
+          <path
+            d="M114 544 C102 520, 112 496, 132 494 C134 516, 126 534, 114 544 Z"
+            fill="url(#sbLeafGradMint)"
+            stroke="#176B4D"
+            strokeWidth="0.8"
+            strokeOpacity="0.25"
+          />
+          <path d="M120 508 C124 522, 122 534, 114 544" stroke="#176B4D" strokeWidth="0.7" strokeDasharray="1.5 2" opacity="0.25" />
+          <path
+            d="M156 490 C150 466, 164 446, 182 448 C180 468, 168 484, 156 490 Z"
+            fill="url(#sbLeafGradLush)"
+          />
+          <path
+            d="M136 384 C122 372, 124 354, 140 352 C148 366, 144 378, 136 384 Z"
+            fill="url(#sbLeafGradEmerald)"
+          />
+          <path
+            d="M164 432 C180 418, 198 424, 196 440 C182 442, 172 438, 164 432 Z"
+            fill="url(#sbLeafGradMint)"
+          />
+          <path
+            d="M100 354 C88 346, 86 332, 98 328 C106 338, 104 348, 100 354 Z"
+            fill="url(#sbLeafGradLush)"
+            opacity="0.75"
+          />
+
+          {/* Cluster C: Right flourishing twigs */}
+          <path
+            d="M182 512 C198 496, 218 502, 220 518 C204 526, 190 520, 182 512 Z"
+            fill="url(#sbLeafGradMint)"
             stroke="#8EAD9B"
             strokeWidth="0.8"
             strokeOpacity="0.4"
           />
           <path
-            d="M68 534 C86 520, 98 526, 94 542 C82 544, 74 540, 68 534 Z"
-            fill="#DCE7DF"
+            d="M228 496 C238 482, 252 486, 254 500 C242 506, 232 502, 228 496 Z"
+            fill="url(#sbLeafGradEmerald)"
           />
           <path
-            d="M26 458 C12 452, 10 434, 22 426 C32 438, 30 450, 26 458 Z"
-            fill="#8EAD9B"
-            fillOpacity="0.22"
+            d="M214 430 C204 410, 214 394, 232 396 C230 414, 222 426, 214 430 Z"
+            fill="url(#sbLeafGradLush)"
           />
 
-          {/* Leaf cluster 2 - main central bough */}
+          {/* Cluster D: Lower branch bough */}
           <path
-            d="M112 544 C102 522, 110 500, 128 498 C130 518, 122 534, 112 544 Z"
-            fill="#E4F0E7"
-            stroke="#176B4D"
-            strokeWidth="0.8"
-            strokeOpacity="0.22"
+            d="M100 660 C114 642, 136 646, 138 662 C122 668, 108 666, 100 660 Z"
+            fill="url(#sbLeafGradMint)"
           />
           <path
-            d="M152 490 C146 468, 158 450, 174 452 C172 470, 162 484, 152 490 Z"
-            fill="#DCE7DF"
+            d="M148 680 C138 698, 148 716, 164 712 C164 696, 156 686, 148 680 Z"
+            fill="url(#sbLeafGradLush)"
           />
           <path
-            d="M134 392 C122 382, 124 366, 138 364 C144 376, 140 386, 134 392 Z"
-            fill="#8EAD9B"
-            fillOpacity="0.25"
-          />
-          <path
-            d="M160 434 C174 422, 190 426, 188 440 C176 442, 166 438, 160 434 Z"
-            fill="#E4F0E7"
+            d="M194 700 C210 686, 228 692, 228 706 C214 712, 202 706, 194 700 Z"
+            fill="url(#sbLeafGradEmerald)"
           />
 
-          {/* Leaf cluster 3 - right twig */}
-          <path
-            d="M178 512 C192 498, 210 502, 212 516 C198 522, 186 518, 178 512 Z"
-            fill="#E4F0E7"
-            stroke="#8EAD9B"
-            strokeWidth="0.8"
-            strokeOpacity="0.35"
-          />
-          <path
-            d="M218 496 C226 484, 238 486, 240 498 C230 502, 222 500, 218 496 Z"
-            fill="#8EAD9B"
-            fillOpacity="0.22"
-          />
-          <path
-            d="M206 435 C198 418, 206 402, 222 404 C220 420, 214 430, 206 435 Z"
-            fill="#DCE7DF"
-          />
-
-          {/* Leaf cluster 4 - lower branch */}
-          <path
-            d="M96 658 C108 642, 128 644, 130 658 C116 664, 104 662, 96 658 Z"
-            fill="#E4F0E7"
-          />
-          <path
-            d="M142 676 C134 692, 142 708, 156 704 C156 690, 150 682, 142 676 Z"
-            fill="#DCE7DF"
-          />
-          <path
-            d="M188 696 C202 684, 218 688, 218 700 C206 704, 196 700, 188 696 Z"
-            fill="#8EAD9B"
-            fillOpacity="0.2"
-          />
-
-          {/* Delicate botanical nodes / berries */}
-          <circle cx="96" cy="62" r="2.5" fill="#8EAD9B" fillOpacity="0.4" />
-          <circle cx="134" cy="392" r="2.2" fill="#176B4D" fillOpacity="0.25" />
-          <circle cx="218" cy="496" r="2.2" fill="#176B4D" fillOpacity="0.25" />
-          <circle cx="80" cy="594" r="2" fill="#8EAD9B" fillOpacity="0.35" />
+          {/* Floating botanical dewdrops & spore orbs with soft halos */}
+          <circle cx="96" cy="62" r="3.2" fill="#8EAD9B" fillOpacity="0.45" />
+          <circle cx="96" cy="62" r="6" fill="url(#sbDewGlow)" />
+          <circle cx="136" cy="384" r="2.8" fill="#176B4D" fillOpacity="0.32" />
+          <circle cx="228" cy="496" r="3" fill="#176B4D" fillOpacity="0.3" />
+          <circle cx="82" cy="596" r="2.6" fill="#8EAD9B" fillOpacity="0.4" />
+          <circle cx="166" cy="690" r="2.5" fill="#176B4D" fillOpacity="0.3" />
+          <circle cx="72" cy="152" r="2.2" fill="#8EAD9B" fillOpacity="0.5" />
+          <circle cx="126" cy="138" r="2" fill="#8EAD9B" fillOpacity="0.4" />
+          <circle cx="238" cy="740" r="2.4" fill="#8EAD9B" fillOpacity="0.45" />
         </svg>
       </div>
 
@@ -840,30 +936,58 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
           </button>
         </div>
 
-        {/* User Profile Card */}
-        <div className="relative">
+        {/* PWA Install Button in Sidebar */}
+        {isInstallable && !isInstalled && (
           <button
             type="button"
-            onClick={() => setShowProfileMenu((prev) => !prev)}
-            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] transition-colors text-left cursor-pointer"
+            onClick={installApp}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] text-xs font-semibold hover:bg-[#D7E8DC] dark:hover:bg-[#254A39] transition-all cursor-pointer"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-semibold text-xs flex items-center justify-center shrink-0 border border-[#DCE7DF] dark:border-[#244737]">
-                EM
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] truncate leading-tight">
-                  Emily Morgan
-                </p>
-                <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate leading-tight">
-                  {tr("Botanical Care")}
-                </p>
-              </div>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-[#668074] dark:text-[#B0C9BA] shrink-0" />
+            <Download className="w-3.5 h-3.5" />
+            <span>{tr("Install App")}</span>
           </button>
+        )}
 
-          {showProfileMenu && (
+        {/* User Profile / Auth Card */}
+        <div className="relative">
+          {isAuthenticated && user ? (
+            <button
+              type="button"
+              onClick={() => setShowProfileMenu((prev) => !prev)}
+              className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] transition-colors text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-semibold text-xs flex items-center justify-center shrink-0 border border-[#DCE7DF] dark:border-[#244737]">
+                  {user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase() || "PL"}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] truncate leading-tight">
+                    {user.name}
+                  </p>
+                  <p className="text-[11px] text-[#668074] dark:text-[#B0C9BA] truncate leading-tight">
+                    {user.role || tr("Botanical Care")}
+                  </p>
+                </div>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-[#668074] dark:text-[#B0C9BA] shrink-0" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#176B4D] text-white text-xs font-bold hover:bg-[#12563D] transition-all cursor-pointer shadow-xs"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>{tr("Sign In / Sign Up")}</span>
+            </button>
+          )}
+
+          {showProfileMenu && isAuthenticated && (
             <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-xl shadow-md p-1.5 text-xs text-[#163A2D] dark:text-[#F1F7F3] space-y-1 z-20">
               <Link
                 to="/settings"
@@ -889,11 +1013,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                 type="button"
                 onClick={() => {
                   setShowProfileMenu(false);
-                  navigate("/settings");
+                  openAuthModal("login");
                 }}
                 className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[#F0F6F1] dark:hover:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-medium transition-colors cursor-pointer"
               >
-                {tr("Preferences")}
+                {tr("Switch Account")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  logout();
+                }}
+                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 font-medium transition-colors cursor-pointer flex items-center justify-between"
+              >
+                <span>{tr("Sign Out")}</span>
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           )}

@@ -11,9 +11,18 @@ import {
   CheckCircle2,
   Play,
   AlertCircle,
+  Smartphone,
+  Laptop,
+  LogIn,
+  LogOut,
+  Database,
+  ShieldCheck,
 } from "lucide-react";
 import { useLanguage, SupportedLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import { usePWAInstall } from "../hooks/usePWAInstall";
+import { getPlatformInfo } from "../utils/platform";
 import {
   getStoredSpeechSettings,
   saveStoredSpeechSettings,
@@ -27,16 +36,13 @@ import { AudioSpeechButton } from "../components/AudioSpeechButton";
 export const Settings: React.FC = () => {
   const { language, setLanguage, t, tr } = useLanguage();
   const { theme, setTheme, density } = useTheme();
+  const { user, isAuthenticated, isGuest, logout, openAuthModal, updateProfile } = useAuth();
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
+  const platform = getPlatformInfo();
 
-  const [profileName, setProfileName] = useState(
-    () => localStorage.getItem("plantcare_user_name") || "Emily Morgan"
-  );
-  const [profileEmail, setProfileEmail] = useState(
-    () => localStorage.getItem("plantcare_user_email") || "emily.morgan@plantcare.ai"
-  );
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editNameInput, setEditNameInput] = useState(profileName);
-  const [editEmailInput, setEditEmailInput] = useState(profileEmail);
+  const [editNameInput, setEditNameInput] = useState(user?.name || "Emily Morgan");
+  const [editEmailInput, setEditEmailInput] = useState(user?.email || "emily.morgan@plantcare.ai");
 
   const [notifyDisease, setNotifyDisease] = useState(true);
   const [notifyCare, setNotifyCare] = useState(true);
@@ -72,10 +78,7 @@ export const Settings: React.FC = () => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    setProfileName(editNameInput);
-    setProfileEmail(editEmailInput);
-    localStorage.setItem("plantcare_user_name", editNameInput);
-    localStorage.setItem("plantcare_user_email", editEmailInput);
+    updateProfile({ name: editNameInput, email: editEmailInput });
     setIsEditingProfile(false);
     showToast(tr("Profile updated."));
   };
@@ -126,7 +129,10 @@ export const Settings: React.FC = () => {
   const handleExportData = () => {
     const dataToExport = {
       exportDate: new Date().toISOString(),
-      profile: { name: profileName, email: profileEmail },
+      profile: {
+        name: user?.name || "Emily Morgan",
+        email: user?.email || "emily.morgan@plantcare.ai",
+      },
       preferences: { theme, density, language, speechSettings },
     };
     const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
@@ -253,18 +259,139 @@ export const Settings: React.FC = () => {
             </div>
           </form>
         ) : (
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-bold text-sm flex items-center justify-center border border-[#DCE7DF] dark:border-[#244737] shrink-0">
-              EM
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] font-bold text-sm flex items-center justify-center border border-[#DCE7DF] dark:border-[#244737] shrink-0">
+                {user?.name
+                  ? user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()
+                  : "EM"}
+              </div>
+              <div className="min-w-0">
+                <p className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
+                  {user?.name || "Emily Morgan"}
+                </p>
+                <p className="text-xs text-[#668074] dark:text-[#B0C9BA] truncate">
+                  {user?.email || "emily.morgan@plantcare.ai"}
+                </p>
+                <p className="text-[11px] text-[#176B4D] dark:text-[#8EAD9B] font-medium mt-0.5">
+                  {user?.role || tr("Botanical Care Specialist")}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3] truncate">
-                {profileName}
-              </p>
-              <p className="text-xs text-[#668074] dark:text-[#B0C9BA] truncate">{profileEmail}</p>
+
+            <div className="flex items-center gap-2">
+              {isAuthenticated ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal("login")}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] hover:bg-[#E4F0E7] transition-colors cursor-pointer"
+                  >
+                    {tr("Switch Account")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 hover:bg-red-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>{tr("Sign Out")}</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#176B4D] hover:bg-[#12563D] transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>{tr("Sign In / Sign Up")}</span>
+                </button>
+              )}
             </div>
           </div>
         )}
+      </section>
+
+      {/* CROSS-PLATFORM & APP INSTALLATION */}
+      <section className="bg-white dark:bg-[#173126] border border-[#DCE7DF] dark:border-[#244737] rounded-[22px] p-6 space-y-5 shadow-[0_2px_8px_rgba(22,58,45,0.03)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-[#DCE7DF] dark:border-[#244737]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#E4F0E7] dark:bg-[#1D3B2D] text-[#176B4D] dark:text-[#8EAD9B] flex items-center justify-center shrink-0">
+              <Smartphone className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="font-display text-base font-bold text-[#163A2D] dark:text-[#F1F7F3]">
+                {tr("Cross-Platform & Offline Capabilities")}
+              </h2>
+              <p className="text-xs text-[#668074] dark:text-[#B0C9BA]">
+                {tr("Device readiness, native PWA install, and local storage")}
+              </p>
+            </div>
+          </div>
+
+          {isInstallable && !isInstalled && (
+            <button
+              type="button"
+              onClick={installApp}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#176B4D] hover:bg-[#12563D] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{tr("Install Application")}</span>
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] space-y-1">
+            <span className="text-[#668074] dark:text-[#B0C9BA] block font-medium">
+              {tr("Target Platform")}
+            </span>
+            <p className="font-display text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3] flex items-center gap-1.5">
+              {platform.isMobile ? (
+                <Smartphone className="w-4 h-4 text-[#176B4D]" />
+              ) : (
+                <Laptop className="w-4 h-4 text-[#176B4D]" />
+              )}
+              <span>
+                {platform.isIOS
+                  ? "iOS (Apple Safari / PWA)"
+                  : platform.isAndroid
+                    ? "Android (Chrome / TWA)"
+                    : "Desktop & Web Application"}
+              </span>
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] space-y-1">
+            <span className="text-[#668074] dark:text-[#B0C9BA] block font-medium">
+              {tr("Installation Status")}
+            </span>
+            <p className="font-display text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3] flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-[#2D8A62]" />
+              <span>
+                {isInstalled
+                  ? tr("Standalone App (Installed)")
+                  : tr("Browser Web App / Ready")}
+              </span>
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-[#F6F9F5] dark:bg-[#12281E] border border-[#DCE7DF] dark:border-[#244737] space-y-1">
+            <span className="text-[#668074] dark:text-[#B0C9BA] block font-medium">
+              {tr("Offline Data Cache")}
+            </span>
+            <p className="font-display text-sm font-bold text-[#163A2D] dark:text-[#F1F7F3] flex items-center gap-1.5">
+              <Database className="w-4 h-4 text-[#176B4D]" />
+              <span>{tr("Active & Synchronized")}</span>
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* 2. APPEARANCE & THEME */}

@@ -20,6 +20,7 @@ import {
   Layers,
   Thermometer,
   Bookmark,
+  Share2,
 } from "lucide-react";
 import { LoadingAnalysis } from "../components/LoadingAnalysis";
 import { AudioSpeechButton } from "../components/AudioSpeechButton";
@@ -34,6 +35,11 @@ import {
   resolveRealisticPlantImage,
   handlePlantImageError,
 } from "../utils/plantImageResolver";
+import {
+  sharePlantDiagnosis,
+  triggerHaptic,
+  getPlatformInfo,
+} from "../utils/platform";
 
 interface SamplePreset {
   id: "tomato" | "rose" | "chilli" | "monstera";
@@ -90,6 +96,7 @@ export const AnalyzePlant: React.FC = () => {
   const { language, t, tr, localizeDiagnosticResult } = useLanguage();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileCameraInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -135,6 +142,7 @@ export const AnalyzePlant: React.FC = () => {
   }, [activeTab]);
 
   const handleTabSelect = (tab: "all" | "identify" | "disease") => {
+    triggerHaptic("light");
     if (tab === "all") {
       setSearchParams({});
     } else {
@@ -152,6 +160,7 @@ export const AnalyzePlant: React.FC = () => {
       );
       return;
     }
+    triggerHaptic("light");
     const url = URL.createObjectURL(file);
     setSelectedFile(file);
     setPreviewUrl(url);
@@ -161,6 +170,7 @@ export const AnalyzePlant: React.FC = () => {
   }, []);
 
   const handleSelectPreset = (preset: SamplePreset) => {
+    triggerHaptic("light");
     setSelectedFile(null);
     setSelectedPreset(preset);
     setPreviewUrl(preset.imageUrl);
@@ -184,12 +194,22 @@ export const AnalyzePlant: React.FC = () => {
 
   const startCamera = useCallback(async () => {
     setCameraError(null);
+    const platform = getPlatformInfo();
+
+    // On mobile devices, fallback to native camera input directly if getUserMedia is restricted or fails
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+      if (mobileCameraInputRef.current) {
+        mobileCameraInputRef.current.click();
+        return;
+      }
+    }
+
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
       setCameraActive(true);
@@ -197,9 +217,14 @@ export const AnalyzePlant: React.FC = () => {
         videoRef.current.srcObject = stream;
       }
     } catch {
-      setCameraError(
-        "Camera permission denied or camera not accessible. Please upload an image instead."
-      );
+      // Permission denied or blocked in iframe: provide native device file/camera fallback
+      if (platform.isMobile && mobileCameraInputRef.current) {
+        mobileCameraInputRef.current.click();
+      } else {
+        setCameraError(
+          "Camera access denied or unavailable. Please use the device camera or upload an image."
+        );
+      }
       setCameraActive(false);
     }
   }, []);
@@ -625,6 +650,19 @@ export const AnalyzePlant: React.FC = () => {
                   }}
                 />
 
+                {/* Cross-platform device camera direct capture */}
+                <input
+                  ref={mobileCameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) validateAndAcceptFile(file);
+                  }}
+                />
+
                 {!previewUrl && !cameraActive && (
                   <div
                     onDragOver={(e) => {
@@ -872,6 +910,22 @@ export const AnalyzePlant: React.FC = () => {
                         {tr("Species Identified")}
                       </span>
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            sharePlantDiagnosis({
+                              title: `PlantCare AI: ${localizedInline.plant_name}`,
+                              text: `${localizedInline.plant_name} (${localizedInline.scientific_name || ""}) — Identified with ${Math.round(localizedInline.confidence_score * 100)}% confidence.`,
+                              url: window.location.origin + `/results/${inlineResult.id}?mode=identify`,
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] bg-[#F0F6F1] dark:bg-[#12281E] hover:bg-[#E4F0E7] border border-[#DCE7DF] dark:border-[#244737] rounded-lg cursor-pointer transition-colors"
+                          title={tr("Share")}
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
+                          <span className="hidden sm:inline">{tr("Share")}</span>
+                        </button>
                         <AudioSpeechButton text={inlineNarration} label={t.listen} size="sm" />
                         <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#E8F5EE] dark:bg-[#1D3B2D] text-[#2D8A62] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
                           {Math.round(localizedInline.confidence_score * 100)}% {tr("Match")}
@@ -1021,6 +1075,22 @@ export const AnalyzePlant: React.FC = () => {
                         {tr("Analysis Result")}
                       </span>
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("light");
+                            sharePlantDiagnosis({
+                              title: `PlantCare AI: ${localizedInline.plant_name} — ${localizedInline.disease_name}`,
+                              text: `${localizedInline.plant_name} — Health Score: ${localizedInline.health_score}%. Diagnosis: ${localizedInline.disease_name}. Status: ${localizedInline.overall_status}.`,
+                              url: window.location.origin + `/results/${inlineResult.id}?mode=disease`,
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#163A2D] dark:text-[#F1F7F3] bg-[#F0F6F1] dark:bg-[#12281E] hover:bg-[#E4F0E7] border border-[#DCE7DF] dark:border-[#244737] rounded-lg cursor-pointer transition-colors"
+                          title={tr("Share")}
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-[#176B4D] dark:text-[#8EAD9B]" />
+                          <span className="hidden sm:inline">{tr("Share")}</span>
+                        </button>
                         <AudioSpeechButton text={inlineNarration} label={t.listen} size="sm" />
                         <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#E8F5EE] dark:bg-[#1D3B2D] text-[#2D8A62] dark:text-[#8EAD9B] border border-[#DCE7DF] dark:border-[#244737]">
                           {localizedInline.overall_status || tr("Diagnosed")}
